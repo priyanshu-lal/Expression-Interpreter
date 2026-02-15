@@ -145,7 +145,7 @@ static inline bool advance() {
 }
 
 static inline bool consume(TokenType tkType) {
-	if (nextTk.type == tkType) {
+	if (currentTk.type == tkType) {
 		advance();
 		return true;
 	}
@@ -336,13 +336,26 @@ static ParseResult resolveNewVariableDecl() {
 	return OK;
 }
 
-static ParseResult registerFormalArguments() {
+static ParseResult registerFunctionHeaderData() {
+	if (currentTk.type == TK_KW_OF) advance();
+	
 	bool expectsComma = false, isInvalid = false;
 	int argIdx = 0;
-	while (currentTk.type != TK_CLOSE_PAREN && currentTk.type != TK_EOL) {
+	TokenType endToken = TK_CLOSE_PAREN;
+
+	if (currentTk.type == TK_IDENTIFIER) {
+		endToken = TK_ARROW;
+	}
+	else if (currentTk.type != TK_OPEN_PAREN) {
+		displayError(nextTk, "Expected '(' after function name");
+		return FATAL_ERROR;
+	}
+
+	while (currentTk.type != endToken && currentTk.type != TK_EOL) {
 		if (expectsComma) {
-			if (currentTk.type == TK_COMMA) {
+			if (currentTk.type == TK_COMMA || currentTk.type == TK_KW_AND) {
 				expectsComma = false;
+				advance();
 				continue;
 			}
 			else {
@@ -383,6 +396,12 @@ static ParseResult registerFormalArguments() {
 			});
 		}
 		expectsComma = true;
+		advance();
+	}
+
+	if (endToken == TK_CLOSE_PAREN && !consume(TK_ARROW)) {
+		displayError(currentTk, "Expected <y>=></> after function header");
+		return FATAL_ERROR;
 	}
 
 	if (currentTk.type == TK_EOL) {
@@ -398,7 +417,7 @@ static ParseResult declareNewFunction() {
 		return FATAL_ERROR;
 	}
 	advance();
-	if (!consume(TK_IDENTIFIER)) {
+	if (currentTk.type != TK_IDENTIFIER) {
 		displayError(currentTk, "Expected function name after <c>def</> keyword");
 		return FATAL_ERROR;
 	}
@@ -421,27 +440,29 @@ static ParseResult declareNewFunction() {
 		return FATAL_ERROR;
 	}
 	
-	if (!consume(TK_OPEN_PAREN)) {
-		displayError(nextTk, "Expected '(' after function name");
-		return FATAL_ERROR;
-	}
-	
 	char* fnName = str_from_pool(*identifier);
-	if (registerFormalArguments() == FATAL_ERROR) {
+	advance();
+	if (registerFunctionHeaderData() == FATAL_ERROR) {
 		free_str_from_pool(fnName);
 		return FATAL_ERROR;
 	}
 
-	if (!consume(TK_ARROW)) {
+	advance();
+	if (currentTk.type == TK_EOL) {
 		free_str_from_pool(fnName);
-		displayError(currentTk, "Expected <y>=></> after function header");
+		displayError(prevTk, "Unexpected end of function decleration");
+		return FATAL_ERROR;
+	}
+
+	if (!parseInternal()) {
+		free_str_from_pool(fnName);
 		return FATAL_ERROR;
 	}
 	
-	const size_t offset_opCode = s_opCode->len;
-	const size_t offset_constants = s_constants->len;
-	const size_t offset_varList = s_varList->len;
-	const size_t offset_fnList = s_fnList->len;
+	// const size_t offset_opCode = s_opCode->len;
+	// const size_t offset_constants = s_constants->len;
+	// const size_t offset_varList = s_varList->len;
+	// const size_t offset_fnList = s_fnList->len;
 
 	return FATAL_ERROR;
 }

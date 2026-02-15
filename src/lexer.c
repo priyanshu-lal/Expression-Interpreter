@@ -55,6 +55,7 @@ void initLexer() {
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"is", 2, TK_EQUALITY});
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"be", 2, TK_EQUAL});
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"let", 3, TK_KW_LET});
+	hashmap_set(s_keywordMap, &(KeywordEntry) {"as", 2, TK_ARROW});
 }
 
 void freeLexer() {

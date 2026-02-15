@@ -34,6 +34,7 @@ typedef struct Function {
 	unsigned insCount;
 	unsigned argsCount;
 	unsigned* indices;
+	double* inputValues; // container for input values, the evaluator fills this before it calls this function
 	double* constants;   // list of constant numbers (literals)
 	char** varList;      // list of Variable name (char*)
 	void** fnList;       // list of pointers to: Function* or BuiltinFunction* depending on instruction

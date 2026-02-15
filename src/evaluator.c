@@ -71,7 +71,8 @@ static bool resultsInBool(enum OP_CODE op) {
 }
 
 static int evaluateInDetail(const Function* eUnit) {
-	size_t numIdx = 0, fnIdx = 0, identIdx = 0;
+	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
+	unsigned iIdx;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
 	double n1, n2, res = 0.0;
@@ -234,6 +235,13 @@ static int evaluateInDetail(const Function* eUnit) {
 			printStyledText(fstring("  <y>║</> Factorial of <c>%g</> (= <g>%g</>)\n", n1, res));
 			break;
 
+		case OP_PUSH_ARGS:
+			iIdx = eUnit->indices[indicesIdx++];
+			printStyledText(fstring("  <y>║</> Taking input <c>%s</> (= <g>%g</>)\n",
+				eUnit->argsName[iIdx], eUnit->inputValues[iIdx]));
+			NumVecPush(st, eUnit->inputValues[iIdx]);
+			break;
+
         case OP_LINE_DONE:
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
@@ -354,7 +362,7 @@ static int evaluateInDetail(const Function* eUnit) {
 }
 
 static int evaluateDirectly(const Function* eUnit) {
-	size_t numIdx = 0, fnIdx = 0, identIdx = 0;
+	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
 	double n1, n2, res = 0.0;
@@ -469,6 +477,10 @@ static int evaluateDirectly(const Function* eUnit) {
 			res = factorial(n1);
 			if (isnan(res)) return false;
 			NumVecPush(st, res);
+			break;
+
+		case OP_PUSH_ARGS:
+			NumVecPush(st, eUnit->inputValues[eUnit->indices[indicesIdx++]]);
 			break;
 
         case OP_LINE_DONE:
