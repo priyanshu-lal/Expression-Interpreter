@@ -1,0 +1,101 @@
+#include "registry.h"
+#include "hashmap.h"
+#include "container.h"
+#include "allocator.h"
+#include <stdlib.h>
+
+hashmap* g_symbolTable;
+hashmap* g_variables;
+hashmap* g_functions;
+hashmap* g_userFunctions;
+
+extern void loadSymbols();
+static int ptrStringKeyCompare(const void* a, const void* b, void* udata);
+static uint64_t ptrStringKeyHash(const void* item, uint64_t seed0, uint64_t seed1);
+static void freeStringKeyCallback(void* ptr);
+
+void loadRegistry() {
+	st = arena_alloc(g_globArena, sizeof(NumVec));
+	*st = newNumVec(256);
+	g_variables = hashmap_new(sizeof(Variable), 128, 0xABC123456789ULL, 0xDeadFacadeULL,
+		stringKeyHash, stringKeyCompare, NULL, NULL);
+
+	g_userFunctions = hashmap_new(sizeof(Function*), 64, 0, 0,
+		ptrStringKeyHash, ptrStringKeyCompare, freeStringKeyCallback, NULL);
+
+	g_functions = hashmap_new(sizeof(BuiltinFunction*), 128, 0, 0,
+		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
+
+	g_symbolTable = hashmap_new(sizeof(SymbolType), 256, 0, 0,
+		stringKeyHash, stringKeyCompare, NULL, NULL);
+
+	loadSymbols();
+}
+
+void unloadRegistry() {
+	hashmap_free(g_variables);
+	hashmap_free(g_functions);
+	hashmap_free(g_userFunctions);
+	hashmap_free(g_symbolTable);
+}
+
+// ---------- Hashmap callback functions ----------
+static int ptrStringKeyCompare(const void* a, const void* b, void* udata) {
+	return strcmp(**(const char***)a, **(const char***)b);
+}
+
+static uint64_t ptrStringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
+	const char* key = **(const char***)item;
+	return hashmap_xxhash3(key, strlen(key), seed0, seed1);
+}
+
+int stringKeyCompare(const void* a, const void* b, void* udata) {
+	return strcmp(*(const char**)a, *(const char**)b);
+}
+
+uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
+	const char* key = *(const char**)item;
+	return hashmap_xxhash3(key, strlen(key), seed0, seed1);
+}
+
+// int stringArKeyCompare(const void* a, const void* b, void* udata) {
+// 	return strcmp((char*)a, *(const char**)b);
+// }
+
+// uint64_t stringArKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
+//     char* key = (char*)item;
+//     return hashmap_sip(key, strlen(key), seed0, seed1);
+// }
+
+static void freeStringKeyCallback(void* ptr) {
+	free_str_from_pool(**(char***)ptr);
+}
+// ------------------------------------------------
+
+// extern int printf(const char*, ...);
+
+// int main() {
+// 	initAllocators();
+// 	initRegistry();
+
+// 	const char** item = malloc(sizeof(char*));
+	
+// 	*item = "factorial";
+// 	const SymbolType* sm = hashmap_get(g_symbolTable, item);
+
+// 	*item = sm->symbol;
+// 	const Function* fn = *(const Function**)hashmap_get(g_functions, &item);
+
+// 	*item = "x";
+// 	sm = hashmap_get(g_symbolTable, item);
+
+// 	*item = sm->symbol;
+// 	const Variable* v = *(const Variable**)hashmap_get(g_variables, &item);
+
+// 	NumVecPush(st, v->value);
+// 	fn->fnPtr();
+// 	printf("%lf! = %lf\n", v->value, NumVecPopBack(st));
+
+// 	freeRegistry();
+// 	freeAllocators();
+// }
