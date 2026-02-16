@@ -29,7 +29,7 @@ typedef struct {
 
 typedef struct Function {
 	char* key;
-	char** argsName;
+	const char** argsName;
 	enum OP_CODE* instructions;
 	unsigned insCount;
 	unsigned argsCount;

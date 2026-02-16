@@ -235,7 +235,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			printStyledText(fstring("  <y>║</> Factorial of <c>%g</> (= <g>%g</>)\n", n1, res));
 			break;
 
-		case OP_PUSH_ARGS:
+		case OP_PUSH_ARG:
 			iIdx = eUnit->indices[indicesIdx++];
 			printStyledText(fstring("  <y>║</> Taking input <c>%s</> (= <g>%g</>)\n",
 				eUnit->argsName[iIdx], eUnit->inputValues[iIdx]));
@@ -365,6 +365,7 @@ static int evaluateDirectly(const Function* eUnit) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
+	const Function* userFn;
 	double n1, n2, res = 0.0;
 	char* varName;
 
@@ -384,7 +385,13 @@ static int evaluateDirectly(const Function* eUnit) {
 			break;
 
 		case OP_CALL_DEFINED:
-			if (!evaluate((const Function*)(eUnit->fnList[fnIdx++]))) {
+			userFn = (const Function*)(eUnit->fnList[fnIdx++]);
+			size_t startIdx = st->len - userFn->argsCount, k = 0;
+			for (size_t i = startIdx; i < st->len; i++) {
+				userFn->inputValues[k++] = NumVecAt(st, i);
+			}
+			st->len = startIdx;
+			if (!evaluateDirectly(userFn)) {
 				return false;
 			}
 			break;
@@ -479,11 +486,12 @@ static int evaluateDirectly(const Function* eUnit) {
 			NumVecPush(st, res);
 			break;
 
-		case OP_PUSH_ARGS:
+		case OP_PUSH_ARG:
 			NumVecPush(st, eUnit->inputValues[eUnit->indices[indicesIdx++]]);
 			break;
 
         case OP_LINE_DONE:
+			if (eUnit->key) return true;
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
 				enum OP_CODE lastIns = eUnit->instructions[i - 1];

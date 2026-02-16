@@ -30,6 +30,7 @@ hashmap* g_newVarDeclMap;       // element type: VarDeclEntry
 static PtrVec* s_fnList;        // element type: BuiltinFunction* or Function* (no ownership) depending on context
 static PtrVec* s_varList;       // element type: char* (no ownership)
 static Vector* s_opCode;        // element type: OP_CODE
+static Vector* s_indices;       // element type: unsigned int
 static hashmap* s_fnArgsEntry;  // element type: ArgEntry
 static NumVec* s_constants;
 //------------------------
@@ -67,7 +68,7 @@ typedef struct {
 
 typedef struct {
 	const char* argName;
-	int pos;
+	unsigned pos;
 } ArgEntry;
 
 typedef enum {
@@ -83,11 +84,13 @@ void initParser() {
 	s_fnList = arena_alloc(g_globArena, sizeof(PtrVec));
 	s_varList = arena_alloc(g_globArena, sizeof(PtrVec));
 	s_opCode = arena_alloc(g_globArena, sizeof(Vector));
+	s_indices = arena_alloc(g_globArena, sizeof(Vector));
 	s_constants = arena_alloc(g_globArena, sizeof(NumVec));
 	
 	*s_fnList = newPtrVec(64);
 	*s_varList = newPtrVec(64);
 	*s_opCode = newVector(64, sizeof(int));
+	*s_indices = newVector(16, sizeof(unsigned));
 	*s_constants = newNumVec(128);
 	// -----
 	
@@ -116,6 +119,7 @@ void freeParser() {
 	PtrVecFree(s_fnList);
 	PtrVecFree(s_varList);
 	VecFree(s_opCode);
+	VecFree(s_indices);
 	NumVecFree(s_constants);
 
 	PtrVecFree(s_varDeclStack);
@@ -131,6 +135,7 @@ static FORCE_INLINE void addInstruction(enum OP_CODE op) { VecPush(s_opCode, &op
 static FORCE_INLINE void addOperator(TokenType opr) { VecPush(s_operatorStack, &opr); }
 static FORCE_INLINE TokenType peekOperator() { return AS_TK_TYPE(VecTop(s_operatorStack)); }
 static FORCE_INLINE TokenType popOperator() { return AS_TK_TYPE(VecPopBack(s_operatorStack)); }
+static FORCE_INLINE void addIndex(unsigned int i) { VecPush(s_indices, &i); }
 
 static bool parseInternal();
 
@@ -144,13 +149,13 @@ static inline bool advance() {
 	return false;
 }
 
-static inline bool consume(TokenType tkType) {
-	if (currentTk.type == tkType) {
-		advance();
-		return true;
-	}
-	return false;
-}
+// static inline bool consume(TokenType tkType) {
+// 	if (currentTk.type == tkType) {
+// 		advance();
+// 		return true;
+// 	}
+// 	return false;
+// }
 
 static enum OP_CODE tokenToInstruction(TokenType tk, bool* out_hasError) {
 	switch (tk) {
@@ -179,7 +184,7 @@ static enum OP_CODE tokenToInstruction(TokenType tk, bool* out_hasError) {
 	// TK_COMMA to mark call to multi argument or variadic functions
 	// and TK_ARROW to mark call to user defined functions 😅
 	case TK_IDENTIFIER: case TK_COMMA: return OP_CALL_BUILTIN;
-	case TK_ARROW: return OP_CALL_DEFINED;
+	case TK_ARROW: case TK_KW_DEF: return OP_CALL_DEFINED;
 
 	default:
 		if (out_hasError != NULL) *out_hasError = true;
@@ -254,7 +259,48 @@ static ParseResult resolveBuiltinFunctionCall() {
 	return OK;
 }
 
-static ParseResult resolveOfKeyword() {
+static ParseResult resolveFunctionCall() {
+	Function* fnPtr = *(Function**)hashmap_get(g_userFunctions, &identifier);
+
+	FnCallEntry callEntry = {
+		.tk = currentTk,
+		.argsRequired = fnPtr->argsCount,
+		.fnPtr = fnPtr,
+		.isVariadic = false,
+		.isBuiltin = false
+	};
+
+	if (nextTk.type == TK_KW_OF) advance();
+
+	if (fnPtr->argsCount == 1 && nextTk.type != TK_OPEN_PAREN) {
+		VecPush(s_singleArgFnStack, &callEntry);
+		addOperator(TK_KW_DEF);
+	}
+	else if (nextTk.type == TK_OPEN_PAREN) {
+		advance();
+		VecPush(s_fnStack, &callEntry);
+		addOperator(TK_ARROW);  // for marking multi argument function call
+		addOperator(TK_OPEN_PAREN);
+		addOperator(TK_OPEN_PAREN); // for marking the first inner expression
+		if (s_pipeDepth != 0) ++s_absExprParaCount[s_pipeDepth];
+		++s_bracketCount;
+	}
+	else {
+		displayError(callEntry.tk, fstring("Expected '(' after function name, as '%s' "
+			"excepts more than input", fnPtr->key)
+		);
+		return FATAL_ERROR;
+	}
+
+	if (!s_expectExpr) {
+		displayError(currentTk, fstring("Expected a binary operator before function: '%s'", *identifier));
+		s_expectExpr = true;
+		return ERROR;
+	}
+	return OK;
+}
+
+static ParseResult resolveOfKeyword() {if (nextTk.type == TK_KW_OF) advance();
 	if (!s_expectExpr) {
 		if (s_operatorStack->len != 0 && peekOperator() == TK_EXCLAIM) {
 			addInstruction(tokenToInstruction(popOperator(), NULL));
@@ -346,7 +392,10 @@ static ParseResult registerFunctionHeaderData() {
 	if (currentTk.type == TK_IDENTIFIER) {
 		endToken = TK_ARROW;
 	}
-	else if (currentTk.type != TK_OPEN_PAREN) {
+	else if (currentTk.type == TK_OPEN_PAREN) {
+		advance();
+	}
+	else {
 		displayError(nextTk, "Expected '(' after function name");
 		return FATAL_ERROR;
 	}
@@ -398,21 +447,24 @@ static ParseResult registerFunctionHeaderData() {
 		expectsComma = true;
 		advance();
 	}
-
-	if (endToken == TK_CLOSE_PAREN && !consume(TK_ARROW)) {
-		displayError(currentTk, "Expected <y>=></> after function header");
-		return FATAL_ERROR;
-	}
-
 	if (currentTk.type == TK_EOL) {
 		displayError(currentTk, "Unexpected end of decleration");
 		return FATAL_ERROR;
 	}
+
+	if (endToken == TK_CLOSE_PAREN) {
+		advance();
+		if (currentTk.type != TK_ARROW) {
+			displayError(currentTk, "Expected <y>=></> after function header");
+			return FATAL_ERROR;
+		}
+	}
+
 	return isInvalid ? FATAL_ERROR : OK;
 }
 
 static ParseResult declareNewFunction() {
-	if (!(idx == 0 || prevTk.type == TK_SEMICOLON)) {
+	if (!(idx == 0 || prevTk.type == TK_SEMICOLON || s_insideFnBody)) {
 		displayError(currentTk, "Invalid use of <c>def</> keyword, can't declare a function here");
 		return FATAL_ERROR;
 	}
@@ -439,7 +491,7 @@ static ParseResult declareNewFunction() {
 		displayError(currentTk, "A variable with this name is already defined");
 		return FATAL_ERROR;
 	}
-	
+	// -----------------------------------------
 	char* fnName = str_from_pool(*identifier);
 	advance();
 	if (registerFunctionHeaderData() == FATAL_ERROR) {
@@ -447,24 +499,65 @@ static ParseResult declareNewFunction() {
 		return FATAL_ERROR;
 	}
 
-	advance();
-	if (currentTk.type == TK_EOL) {
+	if (nextTk.type == TK_EOL) {
 		free_str_from_pool(fnName);
 		displayError(prevTk, "Unexpected end of function decleration");
 		return FATAL_ERROR;
 	}
+	
+	VecClear(s_indices);
+	const size_t offset_opCode = s_opCode->len;
+	const size_t offset_constants = s_constants->len;
+	const size_t offset_varList = s_varList->len;
+	const size_t offset_fnList = s_fnList->len;
 
+	s_insideFnBody = true;
 	if (!parseInternal()) {
 		free_str_from_pool(fnName);
+		s_insideFnBody = false;
 		return FATAL_ERROR;
 	}
-	
-	// const size_t offset_opCode = s_opCode->len;
-	// const size_t offset_constants = s_constants->len;
-	// const size_t offset_varList = s_varList->len;
-	// const size_t offset_fnList = s_fnList->len;
+	s_insideFnBody = false;
 
-	return FATAL_ERROR;
+	// -----------------------------------------
+	Function* fn = arena_alloc(g_globArena, sizeof(Function));
+	fn->key = fnName;
+	fn->argsCount = hashmap_count(s_fnArgsEntry);
+	fn->argsName = arena_alloc(g_globArena, sizeof(char*) * fn->argsCount);
+	fn->insCount = s_opCode->len - offset_opCode;
+
+	fn->instructions = arena_alloc(g_globArena, sizeof(enum OP_CODE) * fn->insCount);
+	fn->indices = arena_alloc(g_globArena, sizeof(unsigned int) * s_indices->len);
+	fn->inputValues = arena_alloc(g_globArena, sizeof(double) * fn->argsCount);
+
+	size_t i = 0, k = 0;
+	ArgEntry* entry;
+	while (hashmap_iter(s_fnArgsEntry, &i, (void**)&entry)) {
+		fn->argsName[k++] = entry->argName;
+	}
+
+	const size_t constantLen = s_constants->len - offset_constants;
+	const size_t varListLen = s_varList->len - offset_varList;
+	const size_t fnListLen = s_fnList->len - offset_fnList;
+
+	fn->constants = arena_alloc(g_globArena, sizeof(double) * constantLen);
+	fn->varList = arena_alloc(g_globArena, sizeof(char*) * varListLen);
+	fn->fnList = arena_alloc(g_globArena, sizeof(void*) * fnListLen);
+
+	memcpy(fn->instructions, s_opCode->data + offset_opCode, fn->insCount * sizeof(enum OP_CODE));
+	memcpy(fn->indices, s_indices->data, s_indices->len * sizeof(unsigned int));
+	memcpy(fn->constants, s_constants->data + offset_constants, sizeof(double) * constantLen);
+	memcpy(fn->varList, s_varList->data + offset_varList, sizeof(char*) * varListLen);
+	memcpy(fn->fnList, s_fnList->data + offset_fnList, sizeof(void*) * fnListLen);
+
+	s_opCode->len = offset_opCode;
+	s_constants->len = offset_constants;
+	s_varList->len = offset_varList;
+	s_fnList->len = offset_fnList;
+
+	hashmap_set(g_symbolTable, &(SymbolType){fnName, FUNCTION});
+	hashmap_set(g_userFunctions, &fn);
+	return OK;
 }
 
 static void resolveLetKeyword() {
@@ -499,15 +592,27 @@ static void resolveLetKeyword() {
 	}
 }
 
-static ParseResult parseIdentifier() {
+static ParseResult resolveIdentifier() {
 	*identifier = getIdentifier(currentTk);
-	const SymbolType* symbolEntry = (const SymbolType*)hashmap_get(g_symbolTable, identifier);
 
+	if (s_insideFnBody) {
+		const ArgEntry* en = (const ArgEntry*)hashmap_get(s_fnArgsEntry, identifier);
+		if (en) {
+			addIndex(en->pos);
+			addInstruction(OP_PUSH_ARG);
+			if (!s_expectExpr)
+				addInstruction(OP_MUL);
+			s_expectExpr = false;
+			return OK;
+		}
+	}
+
+	const SymbolType* symbolEntry = (const SymbolType*)hashmap_get(g_symbolTable, identifier);
 	if (symbolEntry) {
 		switch (symbolEntry->type) {
 			case VARIABLE:         return resolveVariable(symbolEntry->symbol);
 			case BUILTIN_FUNCTION: return resolveBuiltinFunctionCall();
-			case FUNCTION:         return FATAL_ERROR;
+			case FUNCTION:         return resolveFunctionCall();
 		}
 	}
 	
@@ -527,18 +632,6 @@ static ParseResult parseIdentifier() {
 			return ERROR;
 		}
 	}
-
-	// if (s_insideFnBody) {
-	// 	const ArgEntry* en = (const ArgEntry*)hashmap_get(s_fnArgsEntry, identifier);
-	// 	if (en) {
-	// 		PtrVecPush(s_varList, s_varPtr);
-	// 		addInstruction(OP_PUSH_VAR);
-	// 		if (!s_expectExpr)
-	// 			addInstruction(OP_MUL);
-	// 		s_expectExpr = false;
-	// 		return PARSE_OK;
-	// 	}
-	// }
 
 	if (nextTk.type == TK_EQUAL) {
 		return resolveNewVariableDecl();
@@ -843,22 +936,7 @@ static void handleCloseParentheses() {
 	}
 }
 
-static bool endCurrentExpression() {
-	if (!checkExprEnding()) {
-		return false;
-	}
-	++s_exprCount;
-	s_bracketCount = 0;
-	s_expectExpr = true;
-	while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;
-	prevTk = (Token) {TK_EOL, idx, 0};
-	addInstruction(OP_LINE_DONE);
-	return true;
-}
-
 static bool parseInternal() {
-	currentTk = (Token) {TK_EOL, 0, 0};
-	while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;
 	double n;
 
 	while (advance()) {
@@ -899,12 +977,12 @@ static bool parseInternal() {
 			break;
 
 		case TK_IDENTIFIER:
-			if (parseIdentifier() == FATAL_ERROR) return false;
+			if (resolveIdentifier() == FATAL_ERROR) return false;
 			break;
 
 		case TK_KW_DEF:
-			declareNewFunction();
-			return false;
+			if (declareNewFunction() == FATAL_ERROR) return false;
+			break;
 
 		case TK_AT_THE_RATE:
 			displayError(currentTk, "Unexpected token");
@@ -945,9 +1023,16 @@ static bool parseInternal() {
 			break;
 
 		case TK_SEMICOLON:
-			if (!endCurrentExpression()) {
+			if (!checkExprEnding()) {
 				return false;
 			}
+			++s_exprCount;
+			s_bracketCount = 0;
+			s_expectExpr = true;
+			while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;
+			prevTk = (Token) {TK_EOL, idx, 0};
+			addInstruction(OP_LINE_DONE);
+			if (s_insideFnBody) return g_errorCount == 0;
 			break;
 
 		case TK_KW_LET:
@@ -1055,10 +1140,13 @@ Function* parse(Token* t, int startIdx, size_t len) {
 	VecClear(s_opCode);
 	NumVecClear(s_constants);
 
+	currentTk = (Token) {TK_EOL, 0, 0};
+	while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;
+
 	if (!parseInternal()) {
 		freeLeftOutStrings(false);
 		return NULL;
 	}
 
-	return packIntoFunction();
+	return s_opCode->len == 0 ? NULL : packIntoFunction();
 }
