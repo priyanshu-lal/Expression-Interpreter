@@ -255,7 +255,8 @@ Token* tokenize(const char* str, size_t len, size_t* outLen) {
 		case '_': addToken(TK_UNDERSCORE); break;
 		
 		case '-':
-			addToken(TK_SUB);
+			if (match('>')) addToken(TK_ARROW);
+			else addToken(TK_SUB);
 			break;
 
 		case '/':
@@ -264,8 +265,7 @@ Token* tokenize(const char* str, size_t len, size_t* outLen) {
 			break;
 
 		case '=':
-			if (match('>')) addToken(TK_ARROW);
-			else if (match('=')) addToken(TK_EQUALITY);
+			if (match('=')) addToken(TK_EQUALITY);
 			else addToken(TK_EQUAL);
 			break;
 

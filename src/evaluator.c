@@ -70,6 +70,13 @@ bool resultsInBool(enum OP_CODE op) {
 		|| op == OP_ISEQUAL || op == OP_NOTEQUAL;
 }
 
+static bool isEqual(double a, double b) {
+	double diff = fabs(a - b);
+	double abs_tolerance = 1e-12, rel_tolerance = 1e-9;
+	if (diff <= abs_tolerance) return true;
+	return diff <= fmax(fabs(a), fabs(b)) * rel_tolerance;
+}
+
 static int evaluateInDetail(const Function* eUnit) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	unsigned iIdx;
@@ -555,13 +562,13 @@ static int evaluateDirectly(const Function* eUnit) {
 		case OP_ISEQUAL:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
-			NumVecPush(st, (double)(n1 == n2));
+			NumVecPush(st, (double)isEqual(n1, n2));
 			break;
 
 		case OP_NOTEQUAL:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
-			NumVecPush(st, (double)(n1 != n2));
+			NumVecPush(st, (double)(!isEqual(n1, n2)));
 			break;
         }
     }

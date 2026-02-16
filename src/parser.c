@@ -527,6 +527,7 @@ static ParseResult declareNewFunction() {
 	// -----------------------------------------
 	s_currentFnName = str_from_pool(*identifier);
 	advance();
+	hashmap_clear(s_fnArgsEntry, false);
 	if (registerFunctionHeaderData() == FATAL_ERROR) {
 		free_str_from_pool(s_currentFnName);
 		return FATAL_ERROR;
@@ -579,7 +580,7 @@ static ParseResult declareNewFunction() {
 	fn->varList = arena_alloc(g_globArena, sizeof(char*) * varListLen);
 	fn->fnList = arena_alloc(g_globArena, sizeof(void*) * fnListLen);
 
-	memcpy(fn->instructions, s_opCode->data + offset_opCode, fn->insCount * sizeof(enum OP_CODE));
+	memcpy(fn->instructions, s_opCode->data + (offset_opCode * sizeof(enum OP_CODE)), fn->insCount * sizeof(enum OP_CODE));
 	memcpy(fn->indices, s_indices->data, s_indices->len * sizeof(unsigned int));
 	memcpy(fn->constants, s_constants->data + offset_constants, sizeof(double) * constantLen);
 	memcpy(fn->varList, s_varList->data + offset_varList, sizeof(char*) * varListLen);
@@ -682,7 +683,7 @@ static ParseResult resolveIdentifier() {
 static int precedence(TokenType tk) {
 	switch (tk) {
 	case TK_IDENTIFIER:
-	case TK_ARROW:
+	case TK_KW_DEF:
 		return 11;
 
 	case TK_EXCLAIM:
@@ -1168,8 +1169,6 @@ Function* parse(Token* t, int startIdx, size_t len) {
 	VecClear(s_fnStack);
 	VecClear(s_singleArgFnStack);
 	PtrVecClear(s_varDeclStack);
-
-	hashmap_clear(s_fnArgsEntry, false);
 
 	PtrVecClear(s_fnList);
 	PtrVecClear(s_varList);
