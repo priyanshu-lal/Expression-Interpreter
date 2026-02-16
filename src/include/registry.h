@@ -31,6 +31,7 @@ typedef struct Function {
 	char* key;
 	const char** argsName;
 	enum OP_CODE* instructions;
+	bool returnTypeIsNum;
 	unsigned insCount;
 	unsigned argsCount;
 	unsigned* indices;

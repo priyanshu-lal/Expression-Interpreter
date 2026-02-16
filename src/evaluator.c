@@ -63,7 +63,7 @@ bool evaluate(const Function* fn) {
 	return 0;
 }
 
-static bool resultsInBool(enum OP_CODE op) {
+bool resultsInBool(enum OP_CODE op) {
 	return op == OP_LOGICAL_AND || op == OP_LOGICAL_NOT || op == OP_LOGICAL_OR
 		|| op == OP_GT || op == OP_SM
 		|| op == OP_GT_OR_EQ || op == OP_SM_OR_EQ
@@ -491,7 +491,6 @@ static int evaluateDirectly(const Function* eUnit) {
 			break;
 
         case OP_LINE_DONE:
-			if (eUnit->key) return true;
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
 				enum OP_CODE lastIns = eUnit->instructions[i - 1];
@@ -566,5 +565,5 @@ static int evaluateDirectly(const Function* eUnit) {
 			break;
         }
     }
-	return !isnan(g_answer);
+	return eUnit->key ? true : !isnan(g_answer);
 }

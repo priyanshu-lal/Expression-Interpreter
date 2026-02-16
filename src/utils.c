@@ -144,18 +144,20 @@ void displayUserFunctions() {
 		resetTextAttribute();
 		return;
 	}
-	size_t i = 0;
-	const Function* uFn;
-	printStyledText("\n<y>User Defined Functions:");
-	changeTextColor(COLOR_CYAN);
+	size_t i = 0, k = 1;
+	const Function** uFn;
+	printStyledText("\n<y>User Defined Functions:\n");
 
 	while (hashmap_iter(g_userFunctions, &i, (void**)&uFn)) {
-		printf("  %s(", uFn->key);
-		for (unsigned i = 0; i < uFn->argsCount - 1; i++) {
-			printf("%s, ", uFn->argsName[i]);
+		printStyledText(fstring("  %zu) <b>%s</>(", k++, (*uFn)->key));
+		for (unsigned i = 0; i < (*uFn)->argsCount - 1; i++) {
+			printStyledText(fstring("<c>%s</>, ", (*uFn)->argsName[i]));
 		}
-		printf("%s)\n", uFn->argsName[uFn->argsCount - 1]);
+		// printf("%s) - \n", (*uFn)->argsName[(*uFn)->argsCount - 1]);
+		printStyledText(fstring("<c>%s</>) - <b>%u</> instructions\n",
+			(*uFn)->argsName[(*uFn)->argsCount - 1], (*uFn)->insCount));
 	}
+	
 }
 
 void displayHelpAndUsageGuide() {
@@ -342,7 +344,19 @@ void removeCommand(Token* tokens, size_t len) {
 			isInvalid = true;
 		}
 		else if (keyType->type == VARIABLE) {
-			PtrVecPush(&freeList, keyType->symbol);
+			const VarDependecies* vd = hashmap_get(g_refEntries, &varName);
+			if (vd) {
+				displayError(currentTk, "Can't remove this variable as it's been referenced in the following function(s):");
+				struct FuncList* fList = vd->head;
+				int i = 1;
+				while (fList) {
+					printStyledText(fstring("          %d) <c>%s\n", i++, fList->fnName));
+					fList = fList->next;
+				}
+			}
+			else {
+				PtrVecPush(&freeList, keyType->symbol);
+			}
 		}
 		else {
 			isInvalid = true;

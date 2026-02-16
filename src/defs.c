@@ -54,11 +54,6 @@ static void setVariables() {
 	hashmap_set(g_variables, &(Variable){str_from_pool("e"), 2.7182818284590452354});
 }
 
-static int demo() {
-	NumVecPush(st, 2 * NumVecPopBack(st));
-	return 1;
-}
-
 static void setFunctions() {
 	newBuiltinFunction("sqrt", _sqrt, 1, false);
 	newBuiltinFunction("fib", fib, 1, false);
@@ -81,7 +76,6 @@ static void setFunctions() {
 	newBuiltinFunction("deg", __toDegree, 1, false);
 	newBuiltinFunction("exp", expFn, 1, false);
 	newBuiltinFunction("ln", lnFn, 1, false);
-	newBuiltinFunction("abs", absFn, 1, false);
 	newBuiltinFunction("mean", mean, INT_MAX, true);
 	newBuiltinFunction("lcm", lcm, INT_MAX, true);
 	newBuiltinFunction("max", maxFn, INT_MAX, true);
@@ -90,10 +84,8 @@ static void setFunctions() {
 	newBuiltinFunction("distance", distanceFn, 4, false);
 	newBuiltinFunction("slope", slopeFn, 4, false);
 	newBuiltinFunction("log_base", logBase, 2, false);
-	newBuiltinFunction("hypo", hypoFn, 2, false);
 	newBuiltinFunction("pow", powFn, 2, false);
 	newBuiltinFunction("sum", sumFn, INT_MAX, true);
-	newBuiltinFunction("f", demo, 1, false);
 }
 
 static void populateSymbolTable() {
@@ -219,12 +211,6 @@ static int sumFn() {
 		s += NumVecPopBack(st);
 	}
 	NumVecPush(st, s);
-	return 1;
-}
-
-static int hypoFn() {
-	double b = NumVecPopBack(st), l = NumVecPopBack(st);
-	NumVecPush(st, sqrt(l * l + b * b));
 	return 1;
 }
 

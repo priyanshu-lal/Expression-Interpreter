@@ -46,6 +46,7 @@ void initEvaluator();
 void freeEvaluator();
 
 const char* toBoolString(double n);
+bool resultsInBool(enum OP_CODE op);
 
 void setEvaluationMode(enum EvalMode);
 enum EvalMode getEvaluationMode(void);
