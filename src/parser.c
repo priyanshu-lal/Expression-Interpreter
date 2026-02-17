@@ -36,6 +36,7 @@ static Vector* s_opCode;        // element type: OP_CODE
 static Vector* s_indices;       // element type: unsigned int
 static hashmap* s_fnArgsEntry;  // element type: ArgEntry
 static NumVec* s_constants;
+static PtrVec* s_argNamePtr;    // element type: char* (no ownership)
 //------------------------
 
 static Vector* s_operatorStack;    // element type: TokenType
@@ -90,12 +91,14 @@ void initParser() {
 	s_opCode = arena_alloc(g_globArena, sizeof(Vector));
 	s_indices = arena_alloc(g_globArena, sizeof(Vector));
 	s_constants = arena_alloc(g_globArena, sizeof(NumVec));
+	s_argNamePtr = arena_alloc(g_globArena, sizeof(PtrVec));
 	
 	*s_fnList = newPtrVec(64);
 	*s_varList = newPtrVec(64);
 	*s_opCode = newVector(64, sizeof(int));
 	*s_indices = newVector(16, sizeof(unsigned));
 	*s_constants = newNumVec(128);
+	*s_argNamePtr = newPtrVec(4);
 	// -----
 	
 	s_varDeclStack = arena_alloc(g_globArena, sizeof(PtrVec));
@@ -129,6 +132,7 @@ void freeParser() {
 	VecFree(s_opCode);
 	VecFree(s_indices);
 	NumVecFree(s_constants);
+	PtrVecFree(s_argNamePtr);
 
 	PtrVecFree(s_varDeclStack);
 	VecFree(s_fnStack);
@@ -454,8 +458,10 @@ static ParseResult registerFunctionHeaderData() {
 			displayError(currentTk, "Cannot use the same name more than once");
 		}
 		else {
+			char* newArgName = str_from_pool(*identifier);
+			PtrVecPush(s_argNamePtr, newArgName);
 			hashmap_set(s_fnArgsEntry, &(ArgEntry) {
-				.argName = str_from_pool(*identifier),
+				.argName = newArgName,
 				.pos = argIdx++
 			});
 		}
@@ -476,6 +482,13 @@ static ParseResult registerFunctionHeaderData() {
 	}
 
 	return isInvalid ? FATAL_ERROR : OK;
+}
+
+static void freeFunctionMetadata() {
+	free_str_from_pool(s_currentFnName);
+	while (s_argNamePtr->len != 0) {
+		free_str_from_pool(PtrVecPopBack(s_argNamePtr));
+	}
 }
 
 static void registerUsedGlobalVars() {
@@ -526,15 +539,15 @@ static ParseResult declareNewFunction() {
 	}
 	// -----------------------------------------
 	s_currentFnName = str_from_pool(*identifier);
-	advance();
 	hashmap_clear(s_fnArgsEntry, false);
+	advance();
 	if (registerFunctionHeaderData() == FATAL_ERROR) {
-		free_str_from_pool(s_currentFnName);
+		freeFunctionMetadata();
 		return FATAL_ERROR;
 	}
 
 	if (nextTk.type == TK_EOL) {
-		free_str_from_pool(s_currentFnName);
+		freeFunctionMetadata();
 		displayError(prevTk, "Unexpected end of function decleration");
 		return FATAL_ERROR;
 	}
@@ -548,7 +561,7 @@ static ParseResult declareNewFunction() {
 	s_insideFnBody = true;
 	hashmap_clear(s_tmpVarRecord, false);
 	if (!parseInternal()) {
-		free_str_from_pool(s_currentFnName);
+		freeFunctionMetadata();
 		s_insideFnBody = false;
 		return FATAL_ERROR;
 	}
@@ -561,15 +574,15 @@ static ParseResult declareNewFunction() {
 	fn->argsCount = hashmap_count(s_fnArgsEntry);
 	fn->argsName = arena_alloc(g_globArena, sizeof(char*) * fn->argsCount);
 	fn->insCount = s_opCode->len - offset_opCode;
+	fn->returnTypeIsNum = !resultsInBool(AS_OP_CODE(VecTop(s_opCode)));
 
 	fn->instructions = arena_alloc(g_globArena, sizeof(enum OP_CODE) * fn->insCount);
 	fn->indices = arena_alloc(g_globArena, sizeof(unsigned int) * s_indices->len);
 	fn->inputValues = arena_alloc(g_globArena, sizeof(double) * fn->argsCount);
 
-	size_t k = 0, i = 0;
-	ArgEntry* entry;
-	while (hashmap_iter(s_fnArgsEntry, &i, (void**)&entry)) {
-		fn->argsName[k++] = entry->argName;
+	size_t k = 0;
+	while (s_argNamePtr->len != 0) {
+		fn->argsName[k++] = PtrVecPopBack(s_argNamePtr);
 	}
 
 	const size_t constantLen = s_constants->len - offset_constants;
@@ -670,6 +683,11 @@ static ParseResult resolveIdentifier() {
 	}
 
 	if (nextTk.type == TK_EQUAL) {
+		if (s_insideFnBody) {
+			displayError(currentTk, "Declaring a new global variable inside function is not allowed");
+			advance();
+			return ERROR;
+		}
 		return resolveNewVariableDecl();
 	}
 	else {
@@ -1151,7 +1169,8 @@ static Function* packIntoFunction() {
 	s_intermediateFn->constants = s_constants->data;
 	s_intermediateFn->varList = (char**)s_varList->data;
 	s_intermediateFn->fnList = s_fnList->data;
-	s_intermediateFn->returnTypeIsNum = resultsInBool(AS_OP_CODE(VecAt(s_opCode, s_opCode->len - 2)));
+	if (s_opCode->len > 1)
+		s_intermediateFn->returnTypeIsNum = resultsInBool(AS_OP_CODE(VecAt(s_opCode, s_opCode->len - 2)));
 	return s_intermediateFn;
 }
 

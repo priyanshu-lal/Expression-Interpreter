@@ -504,7 +504,7 @@ static int evaluateDirectly(const Function* eUnit) {
 				if (lastIns == OP_SET_VAR) {
 					NumVecPopBack(st);
 				}
-				else if (resultsInBool(lastIns)) {
+				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && !userFn->returnTypeIsNum)) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
 				}
 				else {
