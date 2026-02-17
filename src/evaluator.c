@@ -38,7 +38,7 @@ void setEvaluationMode(enum EvalMode em) { s_evalMode = em; }
 enum EvalMode getEvaluationMode(void) { return s_evalMode; }
 
 static int evaluateDirectly(const Function*);
-static int evaluateInDetail(const Function*);
+static int evaluateInDetail(const Function*, int);
 
 const char* toBoolString(double n) {
 	return n > 0.0 ? "true" : "false";
@@ -46,7 +46,7 @@ const char* toBoolString(double n) {
 
 bool evaluate(const Function* fn) {
 	VecClear(&s_accumulator);
-	if (s_evalMode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn)) {
+	if (s_evalMode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn, 1)) {
 
 		clock_gettime(CLOCK_MONOTONIC, &end);
 		double timeTaken = ((end.tv_sec - start.tv_sec) * 1000.0) + ((end.tv_nsec - start.tv_nsec) / 1e+6);
@@ -77,16 +77,35 @@ static bool isEqual(double a, double b) {
 	return diff <= fmax(fabs(a), fabs(b)) * rel_tolerance;
 }
 
-static int evaluateInDetail(const Function* eUnit) {
+static void logDetail(int indentLevel, const char* msg) {
+	changeTextColor(COLOR_CYAN);
+	if (indentLevel == 1) {
+		putchar(' ');
+	}
+	else {
+		for (int i = 1; i <= indentLevel; i++) {
+			putchar(' ');
+			if (i != indentLevel) 
+				printf("│");
+		}
+	}
+	printStyledText(msg);
+}
+
+static int evaluateInDetail(const Function* eUnit, int indent) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
+	size_t startIdx;
 	unsigned iIdx;
-	firstErrInFn = false;
 	const BuiltinFunction* fn;
+	const Function* userFn;
+	firstErrInFn = false;
 	double n1, n2, res = 0.0;
 	char* varName;
 	
-	printStyledText("\n<c>[<g>~<c>] <y>Detailed Evaluation Steps:\n");
-	printStyledText("  <y>╔\n");
+	if (eUnit->key == NULL) {
+		printStyledText("\n<c>[<g>~<c>] <y>Detailed Evaluation Steps:\n");
+		printStyledText(" <c>╭─\n");
+	}
 
 	for (size_t i = 0; i < eUnit->insCount; i++) {
 		switch (eUnit->instructions[i]) {
@@ -94,11 +113,10 @@ static int evaluateInDetail(const Function* eUnit) {
 			fn = eUnit->fnList[fnIdx++];
 
 			if (fn->argsCount == 1) {
-				printStyledText(fstring("  <y>║</> Call <b>%s</> (<c>%g</>)", fn->key, NumVecTop(st)));
+				logDetail(indent, fstring("<c>│</> Call <b>%s</> (<c>%g</>)", fn->key, NumVecTop(st)));
 			}
 			else {
-				printStyledText(fstring("  <y>║</> Call <b>%s</> (", fn->key));
-				size_t startIdx;
+				logDetail(indent, fstring("<c>│</> Call <b>%s</> (", fn->key));
 				if (fn->isVariadic) {
 					startIdx = st->len - (size_t)NumVecTop(st) - 1;
 					for (size_t i = startIdx; i < st->len - 2; i++) {
@@ -128,9 +146,36 @@ static int evaluateInDetail(const Function* eUnit) {
 			break;
 
 		case OP_CALL_DEFINED:
-			if (!evaluate((const Function*)(eUnit->fnList[fnIdx++]))) {
+			userFn = (const Function*)(eUnit->fnList[fnIdx++]);
+			startIdx = st->len - userFn->argsCount;
+			size_t k = 0;
+			for (size_t i = startIdx; i < st->len; i++) {
+				userFn->inputValues[k++] = NumVecAt(st, i);
+			}
+			st->len = startIdx;
+
+			logDetail(indent, fstring("<c>│</> Call function <b>%s</>\n", userFn->key));
+			logDetail(indent, "<c>│\n");
+			logDetail(indent + 1, fstring("<c>╭</> <<y>%s</>(", userFn->key));
+			for (unsigned i = 0; i < userFn->argsCount - 1; i++) {
+				printStyledText(fstring("<b>%s </>= <c>%g</>, ", userFn->argsName[i], userFn->inputValues[i]));
+			}
+			printStyledText(fstring("<b>%s </>= <c>%g</>)>\n",
+				userFn->argsName[userFn->argsCount - 1], userFn->inputValues[userFn->argsCount - 1]));
+			logDetail(indent + 1, "<c>│\n");
+
+			if (!evaluateInDetail(userFn, indent + 1)) {
 				return false;
 			}
+
+			logDetail(indent + 1, "<c>│\n");
+			if (userFn->returnTypeIsNum) {
+				logDetail(indent + 1, fstring("<c>╰──> <c>(</>%g<c>)\n", NumVecTop(st)));
+			}
+			else {
+				logDetail(indent + 1, fstring("<c>╰──> <c>(</>%s<c>)\n", toBoolString(NumVecTop(st))));
+			}
+			logDetail(indent, "<c>│\n");
 			break;
 
         case OP_PUSH_NUM:
@@ -143,14 +188,14 @@ static int evaluateInDetail(const Function* eUnit) {
 
 			if (varPtr) {
 				varPtr->value = NumVecTop(st);
-				printStyledText(fstring("  <y>║</> Set <b>%s</> = <c>%g</>\n", varPtr->key, NumVecTop(st)));
+				logDetail(indent, fstring("<c>│</> Set <b>%s</> = <c>%g</>\n", varPtr->key, NumVecTop(st)));
 			}
 			else {
 				hashmap_delete(g_newVarDeclMap, &varName);
 				hashmap_set(g_variables, &(Variable){varName, NumVecTop(st)});
 				hashmap_set(g_symbolTable, &(SymbolType){varName, VARIABLE});
 
-				printStyledText(fstring("  <y>║</> Create new var <b>%s</> = <c>%g</>\n",
+				logDetail(indent, fstring("<c>│</> Create new var <b>%s</> = <c>%g</>\n",
 					varName, NumVecTop(st)));
 			}
 			break;
@@ -163,7 +208,7 @@ static int evaluateInDetail(const Function* eUnit) {
 				displayErrorMsg(fstring("Variable <b>%s</> is not initialized", varPtr->key));
 				return false;
 			}
-			printStyledText(fstring("  <y>║</> Take variable <b>%s</> (= <c>%g</>)\n",
+			logDetail(indent, fstring("<c>│</> Take variable <b>%s</> (= <c>%g</>)\n",
 				varPtr->key, varPtr->value));
 
 			NumVecPush(st, varPtr->value);
@@ -172,21 +217,21 @@ static int evaluateInDetail(const Function* eUnit) {
         case OP_ADD:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
-			printStyledText(fstring("  <y>║</> Add (<c>%g <b>+ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 + n2));
+			logDetail(indent, fstring("<c>│</> Add (<c>%g <b>+ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 + n2));
 			NumVecPush(st, n1 + n2);
 			break;
 
         case OP_SUB:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
-			printStyledText(fstring("  <y>║</> Subtract (<c>%g <b>- <c>%g <b>= <g>%g</>)\n", n1, n2, n1 - n2));
+			logDetail(indent, fstring("<c>│</> Subtract (<c>%g <b>- <c>%g <b>= <g>%g</>)\n", n1, n2, n1 - n2));
 			NumVecPush(st, n1 - n2);
 			break;
 
         case OP_MUL:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
-			printStyledText(fstring("  <y>║</> Multiply (<c>%g <b>* <c>%g <b>= <g>%g</>)\n", n1, n2, n1 * n2));
+			logDetail(indent, fstring("<c>│</> Multiply (<c>%g <b>* <c>%g <b>= <g>%g</>)\n", n1, n2, n1 * n2));
 			NumVecPush(st, n1 * n2);
 			break;
 
@@ -197,7 +242,7 @@ static int evaluateInDetail(const Function* eUnit) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
 				return false;
 			}
-			printStyledText(fstring("  <y>║</> Divide (<c>%g <b>/ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 / n2));
+			logDetail(indent, fstring("<c>│</> Divide (<c>%g <b>/ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 / n2));
 			NumVecPush(st, n1 / n2);
 			break;
 
@@ -208,7 +253,7 @@ static int evaluateInDetail(const Function* eUnit) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
 			}
 			NumVecPush(st, floor(n1 / n2));
-			printStyledText(fstring("  <y>║</> Floor divide (<c>%g <b>// <c>%g <b>= <g>%g</>)\n", 
+			logDetail(indent, fstring("<c>│</> Floor divide (<c>%g <b>// <c>%g <b>= <g>%g</>)\n", 
 				n1, n2, NumVecTop(st)));
 			break;
 
@@ -216,7 +261,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, doubleAbs(n1));
 
-			printStyledText(fstring("  <y>║</> Absolute of <c>%g</> (= <g>%g</>)\n",
+			logDetail(indent, fstring("<c>│</> Absolute of <c>%g</> (= <g>%g</>)\n",
 				n1, NumVecTop(st)));
 			break;
 
@@ -224,14 +269,14 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, fmod(n1, n2));
-			printStyledText(fstring("  <y>║</> Mod (<c>%g <b>%% <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
+			logDetail(indent, fstring("<c>│</> Mod (<c>%g <b>%% <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
 			break;
 
         case OP_POWER:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, pow(n1, n2));
-			printStyledText(fstring("  <y>║</> Power (<c>%g <b>^ <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
+			logDetail(indent, fstring("<c>│</> Power (<c>%g <b>^ <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
 			break;
 
         case OP_FACTORIAL:
@@ -239,12 +284,12 @@ static int evaluateInDetail(const Function* eUnit) {
 			res = factorial(n1);
 			if (isnan(res)) return false;
 			NumVecPush(st, res);
-			printStyledText(fstring("  <y>║</> Factorial of <c>%g</> (= <g>%g</>)\n", n1, res));
+			logDetail(indent, fstring("<c>│</> Factorial of <c>%g</> (= <g>%g</>)\n", n1, res));
 			break;
 
 		case OP_PUSH_ARG:
 			iIdx = eUnit->indices[indicesIdx++];
-			printStyledText(fstring("  <y>║</> Taking input <c>%s</> (= <g>%g</>)\n",
+			logDetail(indent, fstring("<c>│</> Taking input <c>%s</> (= <g>%g</>)\n",
 				eUnit->argsName[iIdx], eUnit->inputValues[iIdx]));
 			NumVecPush(st, eUnit->inputValues[iIdx]);
 			break;
@@ -254,33 +299,34 @@ static int evaluateInDetail(const Function* eUnit) {
 				g_answer = NumVecTop(st);
 				enum OP_CODE lastIns = eUnit->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
-					if (i + 1 == eUnit->insCount) {
-						printStyledText("  <y>╚\n");
-					} else {
-						printStyledText("  <y>╚\n  ╔\n");
+					logDetail(indent, "<c>╰\n");
+					if (i + 1 != eUnit->insCount) {
+						logDetail(indent, "<c>╭─────\n");
+					}
+					else {
+						putchar('\n');
 					}
 					NumVecPopBack(st);
 				}
-				else if (resultsInBool(lastIns)) {
-						VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
-						if (i + 1 == eUnit->insCount) {
-							printStyledText(fstring("  <y>║</> Final Answer: <g><~u>%s</>\n  <y>╚\n",
-								toBoolString(g_answer)));
-						}
-						else {
-							printStyledText(fstring("  <y>║</> Final Answer: <g><~u>%s</>\n  <y>╚\n  ╔\n",
-								toBoolString(g_answer)));
-						}
-					}
-				else {
-					VecPush(&s_accumulator, &(FinalResult) {g_answer, false});
-					if (i + 1 == eUnit->insCount) {
-						printStyledText(fstring("  <y>║</> Final Answer: <g><~u>%g</>\n  <y>╚\n",
-							g_answer));
+				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && !userFn->returnTypeIsNum)) {
+					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
+					logDetail(indent, fstring("<c>╰──> <c>(</>%s<c>)\n",
+							toBoolString(g_answer)));
+					if (i + 1 != eUnit->insCount) {
+						logDetail(indent, "<c>╭─────\n");
 					}
 					else {
-						printStyledText(fstring("  <y>║</> Final Answer: <g><~u>%g</>\n  <y>╚\n  ╔\n",
-							g_answer));
+						putchar('\n');
+					}
+				}
+				else {
+					VecPush(&s_accumulator, &(FinalResult) {g_answer, false});
+					logDetail(indent, fstring("<c>╰──> <c>(</>%g<c>)\n", g_answer));
+					if (i + 1 != eUnit->insCount) {
+						logDetail(indent, "<c>╭─────\n");
+					}
+					else {
+						putchar('\n');
 					}
 				}
 			}
@@ -289,14 +335,14 @@ static int evaluateInDetail(const Function* eUnit) {
 
         case OP_PUSH_PREV_ANS:
 			NumVecPush(st, g_answer);
-			printStyledText(fstring("  <y>║</> Take previous result (= <g>%g</>)\n", g_answer));
+			logDetail(indent, fstring("<c>│</> Take previous result (= <g>%g</>)\n", g_answer));
 			break;
 
 		case OP_LOGICAL_AND:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 > 0.0 && n2 > 0.0));
-			printStyledText(fstring("  <y>║</> Logical AND (<c>%s <b>&& <c>%s <b>= <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Logical AND (<c>%s <b>&& <c>%s <b>= <g>%s</>)\n",
 				toBoolString(n1), toBoolString(n2), toBoolString(NumVecTop(st))));
 			break;
 
@@ -304,14 +350,14 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 > 0.0 || n2 > 0.0));
-			printStyledText(fstring("  <y>║</> Logical OR (<c>%s <b>|| <c>%s <b>= <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Logical OR (<c>%s <b>|| <c>%s <b>= <g>%s</>)\n",
 				toBoolString(n1), toBoolString(n2), toBoolString(NumVecTop(st))));
 			break;
 
 		case OP_LOGICAL_NOT:
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, n1 > 0.0 ? 0.0 : 1.0);
-			printStyledText(fstring("  <y>║</> Logical NOT (<b>not <c>%s <b>= <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Logical NOT (<b>not <c>%s <b>= <g>%s</>)\n",
 				toBoolString(n1), toBoolString(NumVecTop(st))));
 			break;
 
@@ -319,7 +365,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 > n2));
-			printStyledText(fstring("  <y>║</> Greater than (<c>%g <b>> <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Greater than (<c>%g <b>> <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 
@@ -327,7 +373,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 < n2));
-			printStyledText(fstring("  <y>║</> Smaller than (<c>%g <b>< <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Smaller than (<c>%g <b>< <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 
@@ -335,7 +381,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 <= n2));
-			printStyledText(fstring("  <y>║</> Smaller or Equal (<c>%g <b><= <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Smaller or Equal (<c>%g <b><= <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 			
@@ -343,7 +389,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 >= n2));
-			printStyledText(fstring("  <y>║</> Greater or Equal (<c>%g <b>>= <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Greater or Equal (<c>%g <b>>= <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 
@@ -351,7 +397,7 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 == n2));
-			printStyledText(fstring("  <y>║</> Is Equal (<c>%g <b>== <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Is Equal (<c>%g <b>== <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 
@@ -359,13 +405,13 @@ static int evaluateInDetail(const Function* eUnit) {
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, (double)(n1 != n2));
-			printStyledText(fstring("  <y>║</> Is not Equal (<c>%g <b>!= <c>%g <b>=> <g>%s</>)\n",
+			logDetail(indent, fstring("<c>│</> Is not Equal (<c>%g <b>!= <c>%g <b>=> <g>%s</>)\n",
 				n1, n2, toBoolString(NumVecTop(st))));
 			break;
 		}
 	}
 	// return st->len == 0 ? false : !isnan(NumVecTop(st));
-	return !isnan(g_answer);
+	return eUnit->key ? true : !isnan(g_answer);
 }
 
 static int evaluateDirectly(const Function* eUnit) {

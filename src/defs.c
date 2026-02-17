@@ -263,7 +263,10 @@ static int fib() {
 		displayErrorMsg(fstring("fib(%g) => input is out of range", n));
 		return 0;
 	}
-	if (n <= 1) return n;
+	if (n <= 1) {
+		NumVecPush(st, n);
+		return 1;
+	}
 	double a = 0, b = 1, tmp;
 	const int num = (int) n;
 	for (int i = 2; i <= num; i++) {

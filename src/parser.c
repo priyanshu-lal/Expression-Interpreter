@@ -427,7 +427,7 @@ static ParseResult registerFunctionHeaderData() {
 				continue;
 			}
 			else {
-				displayError(prevTk, "Expected ',' after identifier name");
+				displayError(currentTk, "Expected ',' after identifier name");
 				return FATAL_ERROR;
 			}
 		}
@@ -580,10 +580,10 @@ static ParseResult declareNewFunction() {
 	fn->indices = arena_alloc(g_globArena, sizeof(unsigned int) * s_indices->len);
 	fn->inputValues = arena_alloc(g_globArena, sizeof(double) * fn->argsCount);
 
-	size_t k = 0;
-	while (s_argNamePtr->len != 0) {
-		fn->argsName[k++] = PtrVecPopBack(s_argNamePtr);
+	for (size_t i = 0; i < s_argNamePtr->len; i++) {
+		fn->argsName[i] = PtrVecAt(s_argNamePtr, i);
 	}
+	PtrVecClear(s_argNamePtr);
 
 	const size_t constantLen = s_constants->len - offset_constants;
 	const size_t varListLen = s_varList->len - offset_varList;
