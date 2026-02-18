@@ -541,7 +541,7 @@ static ParseResult declareNewFunction() {
 	}
 	// -----------------------------------------
 	s_currentFnName = str_from_pool(*identifier);
-	hashmap_clear(s_fnArgsEntry, false);
+	hashmap_clear(s_fnArgsEntry, true);
 	advance();
 	if (registerFunctionHeaderData() == FATAL_ERROR) {
 		freeFunctionMetadata();
@@ -561,7 +561,7 @@ static ParseResult declareNewFunction() {
 	const size_t offset_fnList = s_fnList->len;
 
 	s_insideFnBody = true;
-	hashmap_clear(s_tmpVarRecord, false);
+	hashmap_clear(s_tmpVarRecord, true);
 	if (!parseInternal()) {
 		freeFunctionMetadata();
 		s_insideFnBody = false;
@@ -1159,7 +1159,7 @@ void freeLeftOutStrings(bool isCalledDuringEval) {
 
 		free_str_from_pool(varEntry->name);
 	}
-	hashmap_clear(g_newVarDeclMap, false);
+	hashmap_clear(g_newVarDeclMap, true);
 }
 
 static Function* packIntoFunction() {

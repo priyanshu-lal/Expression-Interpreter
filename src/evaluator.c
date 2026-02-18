@@ -302,7 +302,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 				if (lastIns == OP_SET_VAR) {
 					logDetail(indent, "<c>╰─\n");
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─\n");
+						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
 					}
@@ -312,7 +312,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
 					logDetail(indent, fstring("<c>╰──> %s\n", toBoolString(g_answer)));
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─\n");
+						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
 					}
@@ -321,7 +321,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, false});
 					logDetail(indent, fstring("<c>╰──> %g\n", g_answer));
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─\n");
+						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
 					}
