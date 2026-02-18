@@ -108,7 +108,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 	size_t startIdx;
 	unsigned iIdx;
 	const BuiltinFunction* fn;
-	const Function* userFn;
+	const Function* userFn = NULL;
 	firstErrInFn = false;
 	double n1, n2, res = 0.0;
 	char* varName;
@@ -308,7 +308,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 					}
 					NumVecPopBack(st);
 				}
-				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && !userFn->returnTypeIsNum)) {
+				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && userFn && !userFn->returnTypeIsNum)) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
 					logDetail(indent, fstring("<c>╰──> %s\n", toBoolString(g_answer)));
 					if (i + 1 != eUnit->insCount) {
@@ -415,7 +415,7 @@ static int evaluateDirectly(const Function* eUnit) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
-	const Function* userFn;
+	const Function* userFn = NULL;
 	double n1, n2, res = 0.0;
 	char* varName;
 
@@ -547,7 +547,7 @@ static int evaluateDirectly(const Function* eUnit) {
 				if (lastIns == OP_SET_VAR) {
 					NumVecPopBack(st);
 				}
-				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && !userFn->returnTypeIsNum)) {
+				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && userFn && !userFn->returnTypeIsNum)) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
 				}
 				else {

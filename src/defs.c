@@ -111,8 +111,8 @@ enum AngleUnit getAngleUnit() { return s_angleUnit; }
 void setAngleUnit(enum AngleUnit unit) { s_angleUnit = unit; }
 
 // ************ Definitions ************
-static inline double toRadian(double n) { return n / 180.0 * M_PI; }
-static inline double toDegree(double n) { return n * 180.0 / M_PI; }
+static inline double toRadian(double n) { return n / 180.0 * 3.14159265358979323846; }
+static inline double toDegree(double n) { return n * 180.0 / 3.14159265358979323846; }
 
 static double gcd(double a, double b) {
 	double tmp;

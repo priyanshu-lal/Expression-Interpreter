@@ -2,10 +2,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "container.h"
 
 struct Function;
 
-typedef struct NumVec NumVec;
 typedef uint8_t OpCode;
 
 enum {
