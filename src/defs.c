@@ -23,7 +23,6 @@ static int expFn();
 static int logFn();
 static int log2Fn();
 static int lnFn();
-static int absFn();
 static int asinFn();
 static int acosFn();
 static int atanFn();

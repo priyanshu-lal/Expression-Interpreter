@@ -8,7 +8,7 @@
 
 #define ARENA_DEFAULT_BLOCK_SIZE (64 * 1024)  /* 64KB default */
 #define ARENA_MIN_BLOCK_SIZE 1024
-#define ARENA_ALIGNMENT 16
+#define ARENA_ALIGNMENT 8
 
 typedef struct ArenaBlock {
 	struct ArenaBlock* next;
@@ -34,8 +34,8 @@ void* arena_calloc(Arena* arena, size_t count, size_t size);
 void arena_reset(Arena* arena);
 void arena_destroy(Arena* arena);
 void arena_get_stats(const Arena* arena, size_t* total_allocated, size_t* total_used, size_t* block_count);
-ArenaBlock* arena_create_checkpoint(const Arena*);
-void arena_restore_checkpoint(Arena*, ArenaBlock* block);
+// ArenaBlock* arena_create_checkpoint(const Arena*);
+// void arena_restore_checkpoint(Arena*, ArenaBlock* block);
 //------------------------------------------------------------------------
 
 /* ==================== Memory Pool ==================== */

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct Function;
-typedef struct NumVec NumVec;
 
-enum OP_CODE {
+typedef struct NumVec NumVec;
+typedef uint8_t OpCode;
+
+enum {
 	OP_CALL_BUILTIN,
 	OP_CALL_DEFINED,
 	OP_PUSH_NUM,
@@ -46,7 +49,7 @@ void initEvaluator();
 void freeEvaluator();
 
 const char* toBoolString(double n);
-bool resultsInBool(enum OP_CODE op);
+bool resultsInBool(OpCode op);
 
 void setEvaluationMode(enum EvalMode);
 enum EvalMode getEvaluationMode(void);

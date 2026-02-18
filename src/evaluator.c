@@ -63,7 +63,7 @@ bool evaluate(const Function* fn) {
 	return 0;
 }
 
-bool resultsInBool(enum OP_CODE op) {
+bool resultsInBool(OpCode op) {
 	return op == OP_LOGICAL_AND || op == OP_LOGICAL_NOT || op == OP_LOGICAL_OR
 		|| op == OP_GT || op == OP_SM
 		|| op == OP_GT_OR_EQ || op == OP_SM_OR_EQ
@@ -298,7 +298,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
         case OP_LINE_DONE:
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
-				enum OP_CODE lastIns = eUnit->instructions[i - 1];
+				OpCode lastIns = eUnit->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
 					logDetail(indent, "<c>╰─\n");
 					if (i + 1 != eUnit->insCount) {
@@ -543,7 +543,7 @@ static int evaluateDirectly(const Function* eUnit) {
         case OP_LINE_DONE:
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
-				enum OP_CODE lastIns = eUnit->instructions[i - 1];
+				OpCode lastIns = eUnit->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
 					NumVecPopBack(st);
 				}

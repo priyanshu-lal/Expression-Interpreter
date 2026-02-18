@@ -2,6 +2,7 @@
 #include "hashmap.h"
 #include "container.h"
 #include "allocator.h"
+
 #include <stdlib.h>
 
 hashmap* g_symbolTable;
@@ -26,7 +27,7 @@ void loadRegistry() {
 	g_functions = hashmap_new(sizeof(BuiltinFunction*), 128, 0, 0,
 		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
 
-	g_symbolTable = hashmap_new(sizeof(SymbolType), 256, 0, 0,
+	g_symbolTable = hashmap_new(sizeof(SymbolType), 256, 0xDead3FacadeULL, 0xCafeFaccULL,
 		stringKeyHash, stringKeyCompare, NULL, NULL);
 
 	loadSymbols();
@@ -58,6 +59,10 @@ uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
 	return hashmap_xxhash3(key, strlen(key), seed0, seed1);
 }
 
+static void freeFunctionCallback(void* ptr) {
+	free_str_from_pool(**(char***)ptr);
+}
+
 // int stringArKeyCompare(const void* a, const void* b, void* udata) {
 // 	return strcmp((char*)a, *(const char**)b);
 // }
@@ -65,37 +70,4 @@ uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
 // uint64_t stringArKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
 //     char* key = (char*)item;
 //     return hashmap_sip(key, strlen(key), seed0, seed1);
-// }
-
-static void freeFunctionCallback(void* ptr) {
-	free_str_from_pool(**(char***)ptr);
-}
-// ------------------------------------------------
-
-// extern int printf(const char*, ...);
-
-// int main() {
-// 	initAllocators();
-// 	initRegistry();
-
-// 	const char** item = malloc(sizeof(char*));
-	
-// 	*item = "factorial";
-// 	const SymbolType* sm = hashmap_get(g_symbolTable, item);
-
-// 	*item = sm->symbol;
-// 	const Function* fn = *(const Function**)hashmap_get(g_functions, &item);
-
-// 	*item = "x";
-// 	sm = hashmap_get(g_symbolTable, item);
-
-// 	*item = sm->symbol;
-// 	const Variable* v = *(const Variable**)hashmap_get(g_variables, &item);
-
-// 	NumVecPush(st, v->value);
-// 	fn->fnPtr();
-// 	printf("%lf! = %lf\n", v->value, NumVecPopBack(st));
-
-// 	freeRegistry();
-// 	freeAllocators();
 // }

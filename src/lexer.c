@@ -39,7 +39,7 @@ void initLexer() {
 	s_tkCapacity = 2 << 8;
 	s_tokens = (Token*) malloc(sizeof(Token) * s_tkCapacity);
 
-	s_keywordMap = hashmap_new(sizeof(KeywordEntry), 32, 0, 0, 
+	s_keywordMap = hashmap_new(sizeof(KeywordEntry), 32, 0xABC123456789ULL, 0xDeadFacadeULL, 
 		keywordHashCallback, keywordCompareCallback, NULL, NULL);
 
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"and", 3, TK_KW_AND});
@@ -141,7 +141,7 @@ static bool match(char expected) {
 	return true;
 }
 
-static void addToken(enum TokenType type) {
+static void addToken(TokenType type) {
 	if (s_idx > s_tkCapacity) {
 		s_tkCapacity *= 2;
 		void* ptr = realloc(s_tokens, sizeof(Token) * s_tkCapacity);

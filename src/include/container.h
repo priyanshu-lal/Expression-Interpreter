@@ -10,7 +10,6 @@
 #define AS_DOUBLE(PTR) (*(double*)(PTR))
 #define AS_FLOAT(PTR) (*(float*)(PTR))
 #define AS_UINT(PTR) (*(unsigned int*)(PTR))
-#define AS_OP_CODE(PTR) (*(enum OP_CODE*)(PTR))
 
 typedef struct {
 	uint8_t* data;

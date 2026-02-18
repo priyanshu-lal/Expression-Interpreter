@@ -30,7 +30,7 @@ typedef struct {
 typedef struct Function {
 	char* key;
 	const char** argsName;
-	enum OP_CODE* instructions;
+	OpCode* instructions;
 	bool returnTypeIsNum;
 	unsigned insCount;
 	unsigned argsCount;

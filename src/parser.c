@@ -19,6 +19,7 @@
 #define AS_FN_CALL_PTR(PTR) ((FnCallEntry*)(PTR))
 #define GET_FN_NAME(FN_PTR) (*(const char**)(FN_PTR))
 #define AS_TK_TYPE(PTR)     (*(TokenType*)(PTR))
+#define AS_OP_CODE(PTR)     (*(OpCode*)(PTR))
 
 extern double g_answer;  // defined in evaluator.c
 
@@ -95,7 +96,7 @@ void initParser() {
 	
 	*s_fnList = newPtrVec(64);
 	*s_varList = newPtrVec(64);
-	*s_opCode = newVector(64, sizeof(int));
+	*s_opCode = newVector(64, sizeof(OpCode));
 	*s_indices = newVector(16, sizeof(unsigned));
 	*s_constants = newNumVec(128);
 	*s_argNamePtr = newPtrVec(4);
@@ -145,8 +146,8 @@ void freeParser() {
 	hashmap_free(g_refEntries);
 }
 
-static FORCE_INLINE void addInstruction(enum OP_CODE op) { VecPush(s_opCode, &op); }
-static FORCE_INLINE void addOperator(TokenType opr) { VecPush(s_operatorStack, &opr); }
+static FORCE_INLINE void addInstruction(OpCode op) { VecPushByte(s_opCode, op); }
+static FORCE_INLINE void addOperator(TokenType opr) { VecPushByte(s_operatorStack, opr); }
 static FORCE_INLINE TokenType peekOperator() { return AS_TK_TYPE(VecTop(s_operatorStack)); }
 static FORCE_INLINE TokenType popOperator() { return AS_TK_TYPE(VecPopBack(s_operatorStack)); }
 static FORCE_INLINE void addIndex(unsigned int i) { VecPush(s_indices, &i); }
@@ -170,7 +171,7 @@ static inline bool advance() {
 	return false;
 }
 
-static enum OP_CODE tokenToInstruction(TokenType tk, bool* out_hasError) {
+static OpCode tokenToInstruction(TokenType tk, bool* out_hasError) {
 	switch (tk) {
 	case TK_EXCLAIM: return OP_FACTORIAL;
 	case TK_CARET: return OP_POWER;
@@ -195,6 +196,7 @@ static enum OP_CODE tokenToInstruction(TokenType tk, bool* out_hasError) {
 	// bad terminology, but due to lack of matching TokenType and the need for different stacks,
 	// the parser uses TK_IDENTIFIER to mark call to single argument builtin functions,
 	// TK_COMMA to mark call to multi argument or variadic functions
+	// TK_DEF to mark call to single argument user defined functions
 	// and TK_ARROW to mark call to user defined functions 😅
 	case TK_IDENTIFIER: case TK_COMMA: return OP_CALL_BUILTIN;
 	case TK_ARROW: case TK_KW_DEF: return OP_CALL_DEFINED;
@@ -546,9 +548,9 @@ static ParseResult declareNewFunction() {
 		return FATAL_ERROR;
 	}
 
-	if (nextTk.type == TK_EOL) {
+	if (nextTk.type == TK_EOL || nextTk.type == TK_SEMICOLON) {
 		freeFunctionMetadata();
-		displayError(prevTk, "Unexpected end of function decleration");
+		displayError(currentTk, "Unexpected end of function decleration, body is missing");
 		return FATAL_ERROR;
 	}
 	
@@ -576,7 +578,7 @@ static ParseResult declareNewFunction() {
 	fn->insCount = s_opCode->len - offset_opCode;
 	fn->returnTypeIsNum = !resultsInBool(AS_OP_CODE(VecTop(s_opCode)));
 
-	fn->instructions = arena_alloc(g_globArena, sizeof(enum OP_CODE) * fn->insCount);
+	fn->instructions = arena_alloc(g_globArena, fn->insCount);
 	fn->indices = arena_alloc(g_globArena, sizeof(unsigned int) * s_indices->len);
 	fn->inputValues = arena_alloc(g_globArena, sizeof(double) * fn->argsCount);
 
@@ -593,7 +595,7 @@ static ParseResult declareNewFunction() {
 	fn->varList = arena_alloc(g_globArena, sizeof(char*) * varListLen);
 	fn->fnList = arena_alloc(g_globArena, sizeof(void*) * fnListLen);
 
-	memcpy(fn->instructions, s_opCode->data + (offset_opCode * sizeof(enum OP_CODE)), fn->insCount * sizeof(enum OP_CODE));
+	memcpy(fn->instructions, s_opCode->data + offset_opCode, fn->insCount);
 	memcpy(fn->indices, s_indices->data, s_indices->len * sizeof(unsigned int));
 	memcpy(fn->constants, s_constants->data + offset_constants, sizeof(double) * constantLen);
 	memcpy(fn->varList, s_varList->data + offset_varList, sizeof(char*) * varListLen);
@@ -776,7 +778,7 @@ static inline bool isRightAssociative(TokenType tk) {
 
 static void insertOperator(Token tk) {
 	TokenType sign;
-	enum OP_CODE oc;
+	OpCode oc;
 
 	if (tk.type == TK_CARET && s_singleArgFnStack->len != 0 && idx + 2 < LEN
 			&& nextTk.type == TK_SUB && strcmp(tkToString(&tokens[idx + 2]), "1") == 0) {
@@ -1163,14 +1165,15 @@ void freeLeftOutStrings(bool isCalledDuringEval) {
 static Function* packIntoFunction() {
 	s_intermediateFn->key = NULL;
 	s_intermediateFn->argsName = NULL;
-	s_intermediateFn->instructions = (enum OP_CODE*)s_opCode->data;
+	s_intermediateFn->instructions = s_opCode->data;
 	s_intermediateFn->insCount = s_opCode->len;
 	s_intermediateFn->argsCount = 0;
 	s_intermediateFn->constants = s_constants->data;
 	s_intermediateFn->varList = (char**)s_varList->data;
 	s_intermediateFn->fnList = s_fnList->data;
-	if (s_opCode->len > 1)
+	if (s_opCode->len > 1) {
 		s_intermediateFn->returnTypeIsNum = resultsInBool(AS_OP_CODE(VecAt(s_opCode, s_opCode->len - 2)));
+	}
 	return s_intermediateFn;
 }
 

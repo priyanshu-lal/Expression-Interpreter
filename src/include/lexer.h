@@ -2,8 +2,9 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-typedef enum TokenType  {
+enum {
     TK_KW_AND, TK_KW_ANS, TK_KW_DEF, TK_KW_OF, TK_KW_OR, TK_KW_NOT,
     TK_KW_TRUE, TK_KW_FALSE, TK_KW_IF, TK_KW_ELSE,
     TK_ADD, TK_SUB, TK_DIV, TK_MUL, TK_MOD,
@@ -15,10 +16,12 @@ typedef enum TokenType  {
     TK_GT, TK_GT_EQ, TK_SM, TK_SM_EQ,
     TK_EQUALITY, TK_NOT_EQUAL,
     TK_PIPE, TK_SEMICOLON, TK_EOL
-} TokenType;
+};
+
+typedef uint8_t TokenType;
 
 typedef struct Token {
-    enum TokenType type;
+    TokenType type;
     unsigned int start, len;
 } Token;
 

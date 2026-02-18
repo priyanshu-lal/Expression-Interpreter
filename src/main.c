@@ -68,19 +68,3 @@ int main(int argc, char* argv[]) {
 	freeResources();
 	return EXIT_SUCCESS;
 }
-// sqrt (20% of (x = sqrt |-50 + 14|)!)
-// mean of (x = sqrt (20% of sqrt |-50 + 14|!), nCr (x, x / 2), 3x)
-// num = -.5(144); x = |10 - root(|num| * 2, 2)|
-// num = factorial of -x = lcm of (4, 6)
-
-// error: sqrt (12-|45,9|)  // handle pipe inside function
-// strange error: |x(sin)|
-
-/*
-Debug Console history:
-p *(TokenType(*)[2])s_operatorStack->data
-p *(double(*)[4])eUnit->constants
-p *(enum OP_CODE(*)[4])eUnit->instructions
-*/
-
-// clang -O3 -I src/include src/*.c -lm -lreadline -o calc -march=native -flto -fvisibility=hidden
