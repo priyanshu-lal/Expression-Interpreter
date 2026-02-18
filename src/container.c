@@ -37,6 +37,15 @@ void VecPush(Vector* vec, void* value) {
 	vec->len++;
 }
 
+void VecPushByte(Vector* vec, uint8_t byte) {
+	if (vec->len >= vec->capacity) {
+		vec->capacity *= 2;
+		void* newPtr = realloc(vec->data, vec->capacity * vec->elementSize);
+		vec->data = newPtr;
+	}
+	vec->data[vec->len++] = byte;
+}
+
 void* VecPopBack(Vector* vec) {
 	assert(vec->len != 0u);
 	return vec->data + (vec->elementSize * --vec->len);

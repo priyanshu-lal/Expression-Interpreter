@@ -92,6 +92,17 @@ static void logDetail(int indentLevel, const char* msg) {
 	printStyledText(msg);
 }
 
+static void logUserFnHeader(const Function* userFn, int indent) {
+	logDetail(indent, "<c>│\n");
+	logDetail(indent + 1, fstring("<c>╭</> <<y>%s</>(", userFn->key));
+	for (unsigned i = 0; i < userFn->argsCount - 1; i++) {
+		printStyledText(fstring("<c>%s </>= <g>%g</>, ", userFn->argsName[i], userFn->inputValues[i]));
+	}
+	printStyledText(fstring("<c>%s </>= <g>%g</>)>\n",
+		userFn->argsName[userFn->argsCount - 1], userFn->inputValues[userFn->argsCount - 1]));
+	logDetail(indent + 1, "<c>│\n");
+}
+
 static int evaluateInDetail(const Function* eUnit, int indent) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	size_t startIdx;
@@ -103,8 +114,8 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 	char* varName;
 	
 	if (eUnit->key == NULL) {
-		printStyledText("\n<c>[<g>~<c>] <y>Detailed Evaluation Steps:\n");
-		printStyledText(" <c>╭─\n");
+		// printStyledText("\n<c>[<g>~<c>] <y>Detailed Evaluation Steps:\n");
+		printStyledText(" <c>╭─</> <<y>~</>>\n");
 	}
 
 	for (size_t i = 0; i < eUnit->insCount; i++) {
@@ -153,27 +164,17 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 				userFn->inputValues[k++] = NumVecAt(st, i);
 			}
 			st->len = startIdx;
-
-			logDetail(indent, fstring("<c>│</> Call function <b>%s</>\n", userFn->key));
-			logDetail(indent, "<c>│\n");
-			logDetail(indent + 1, fstring("<c>╭</> <<y>%s</>(", userFn->key));
-			for (unsigned i = 0; i < userFn->argsCount - 1; i++) {
-				printStyledText(fstring("<b>%s </>= <c>%g</>, ", userFn->argsName[i], userFn->inputValues[i]));
-			}
-			printStyledText(fstring("<b>%s </>= <c>%g</>)>\n",
-				userFn->argsName[userFn->argsCount - 1], userFn->inputValues[userFn->argsCount - 1]));
-			logDetail(indent + 1, "<c>│\n");
-
+			logUserFnHeader(userFn, indent);
 			if (!evaluateInDetail(userFn, indent + 1)) {
 				return false;
 			}
 
 			logDetail(indent + 1, "<c>│\n");
 			if (userFn->returnTypeIsNum) {
-				logDetail(indent + 1, fstring("<c>╰──> <c>(</>%g<c>)\n", NumVecTop(st)));
+				logDetail(indent + 1, fstring("<c>╰──> <b>returns: <c>%g\n", NumVecTop(st)));
 			}
 			else {
-				logDetail(indent + 1, fstring("<c>╰──> <c>(</>%s<c>)\n", toBoolString(NumVecTop(st))));
+				logDetail(indent + 1, fstring("<c>╰──> <b>returns: <c>%s\n", toBoolString(NumVecTop(st))));
 			}
 			logDetail(indent, "<c>│\n");
 			break;
@@ -299,33 +300,29 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 				g_answer = NumVecTop(st);
 				enum OP_CODE lastIns = eUnit->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
-					logDetail(indent, "<c>╰\n");
+					logDetail(indent, "<c>╰─\n");
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─────\n");
-					}
-					else {
+						logDetail(indent, "<c>╭─\n");
+					} else {
 						putchar('\n');
 					}
 					NumVecPopBack(st);
 				}
 				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && !userFn->returnTypeIsNum)) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
-					logDetail(indent, fstring("<c>╰──> <c>(</>%s<c>)\n",
-							toBoolString(g_answer)));
+					logDetail(indent, fstring("<c>╰──> %s\n", toBoolString(g_answer)));
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─────\n");
-					}
-					else {
+						logDetail(indent, "<c>╭─\n");
+					} else {
 						putchar('\n');
 					}
 				}
 				else {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, false});
-					logDetail(indent, fstring("<c>╰──> <c>(</>%g<c>)\n", g_answer));
+					logDetail(indent, fstring("<c>╰──> %g\n", g_answer));
 					if (i + 1 != eUnit->insCount) {
-						logDetail(indent, "<c>╭─────\n");
-					}
-					else {
+						logDetail(indent, "<c>╭─\n");
+					} else {
 						putchar('\n');
 					}
 				}

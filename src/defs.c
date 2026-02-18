@@ -32,13 +32,11 @@ static int combination();
 static int mean();
 static int lcm();
 static int rootFn();
-static int hypoFn();
 static int distanceFn();
 static int slopeFn();
 static int logBase();
 static int maxFn();
 static int minFn();
-static int powFn();
 static int sumFn();
 
 static void newBuiltinFunction(char* key, CalcFn ptr, int argsCount, bool isVariadic) {
@@ -84,7 +82,6 @@ static void setFunctions() {
 	newBuiltinFunction("distance", distanceFn, 4, false);
 	newBuiltinFunction("slope", slopeFn, 4, false);
 	newBuiltinFunction("log_base", logBase, 2, false);
-	newBuiltinFunction("pow", powFn, 2, false);
 	newBuiltinFunction("sum", sumFn, INT_MAX, true);
 }
 
@@ -237,12 +234,6 @@ static int slopeFn() {
 static int logBase() {
 	double n2 = NumVecPopBack(st), n1 = NumVecPopBack(st);
 	NumVecPush(st, log(n1) / log(n2));
-	return 1;
-}
-
-static int powFn() {
-	double p = NumVecPopBack(st), n = NumVecPopBack(st);
-	NumVecPush(st, pow(n, p));
 	return 1;
 }
 
@@ -453,10 +444,5 @@ static int log2Fn() {
 
 static int lnFn() {
 	NumVecPush(st, log(NumVecPopBack(st)));
-	return 1;
-}
-
-static int absFn() {
-	NumVecPush(st, doubleAbs(NumVecPopBack(st)));
 	return 1;
 }

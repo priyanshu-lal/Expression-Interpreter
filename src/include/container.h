@@ -27,6 +27,8 @@ void* VecTop(Vector*);
 void* VecPopBack(Vector*);
 void VecClear(Vector*);
 
+void VecPushByte(Vector*, uint8_t);
+
 static inline void VecSet(Vector* ar, size_t i, void* value) {
 	assert(i < ar->capacity);
 	memcpy(ar->data + ar->elementSize * i, value, ar->elementSize);
