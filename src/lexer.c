@@ -224,6 +224,7 @@ static bool tokenizeNumber() {
 }
 
 Token* tokenize(const char* str, size_t len, size_t* outLen) {
+	if (!str) return NULL;
 	resetLexer();
 	g_source = str;
 	s_srcLength = len;

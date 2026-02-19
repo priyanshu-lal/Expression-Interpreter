@@ -43,7 +43,6 @@ enum EvalMode {
 };
 
 extern NumVec* st;  // defined in evaluator.c
-extern bool g_showTimestamp; // defined in evaluator.c
 
 void initEvaluator();
 void freeEvaluator();

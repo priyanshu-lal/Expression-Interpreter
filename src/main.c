@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <time.h>
 
 #if defined(__linux__)
 #include <stdio.h>
@@ -16,8 +15,6 @@
 #include "utils.h"
 #include "allocator.h"
 #include "parser.h"
-
-struct timespec start, end;
 
 static void freeResources() {
 	unloadCommands();
@@ -42,28 +39,14 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	bool isRunning = true;
-	size_t tokenLen = 0;
-	Token* tokens;
-	char* input = NULL;
 	displayHelpAndUsageGuide();
 	printStyledText("<c>\nEnter expressions and commands here:\n");
 
-	while (isRunning) {
-		printStyledText("<y>>>");;
+	while (isRunning()) {
+		printStyledText("<y>>>");
+		char* input = STRING_INPUT(" ");
+		evaluateInput(input);
 		if (input) free(input);
-		input = STRING_INPUT(" ");
-
-		clock_gettime(CLOCK_MONOTONIC, &start);
-		if ((tokens = tokenize(input, strlen(input), &tokenLen)) == NULL) {
-			continue;
-		}
-		else if (tokens[0].type == TK_AT_THE_RATE && tokenLen >= 3) {
-			resolveCommand(tokens, tokenLen, &isRunning);
-		}
-		else if (tokenLen > 1) {
-			evaluateInput(tokens, 0, tokenLen);
-		}
 	}
 	freeResources();
 	return EXIT_SUCCESS;

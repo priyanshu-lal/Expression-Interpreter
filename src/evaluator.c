@@ -10,10 +10,9 @@
 #include <stdio.h>
 
 extern hashmap* g_newVarDeclMap;  // defined in parser.c
-extern struct timespec start, end;  // defined in main.c
+extern struct timespec start, end;  // defined in utils.c
 
 NumVec* st;
-bool g_showTimestamp = false;
 double g_answer = NAN;
 
 typedef struct {
@@ -46,18 +45,16 @@ const char* toBoolString(double n) {
 
 bool evaluate(const Function* fn) {
 	VecClear(&s_accumulator);
+	NumVecClear(st);
+	
 	if (s_evalMode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn, 1)) {
-
-		clock_gettime(CLOCK_MONOTONIC, &end);
-		double timeTaken = ((end.tv_sec - start.tv_sec) * 1000.0) + ((end.tv_nsec - start.tv_nsec) / 1e+6);
+		
 
 		for (size_t i = 0; i < s_accumulator.len; i++) {
 			FinalResult res = *(FinalResult*)VecAt(&s_accumulator, i);
 			if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
 			else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
 		}
-		if (s_evalMode == DIRECT && g_showTimestamp)
-			printStyledText(fstring(" <c>(in <b>%g<c> ms)\n", timeTaken));
 		return 1;
 	}
 	return 0;

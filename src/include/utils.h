@@ -11,8 +11,8 @@ void displayUserFunctions();
 void displayHelpAndUsageGuide();
 
 void runInlineInputs(int argc, char* argv[]);
-void resolveCommand(Token* tokens, size_t len, bool* isRunning);
-void evaluateInput(Token* tokens, size_t startIdx, size_t len);
+bool evaluateInput(const char* input);
+bool isRunning(void);
 void loadCommands();
 void unloadCommands();
 void displayHelpAndUsageGuide();

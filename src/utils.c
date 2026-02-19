@@ -11,6 +11,8 @@
 #include "registry.h"
 #include "allocator.h"
 
+struct timespec start, end;
+
 typedef enum {
 	COMMAND_ANGLE,
 	COMMAND_CLEAR,
@@ -31,6 +33,11 @@ typedef struct {
 } CommandEntry;
 
 static hashmap* s_commandTable;
+static bool s_answerInFraction = false;
+static bool s_isRunning = true;
+static bool s_showTimestamp = false;
+
+static bool resolveCommand(Token* tokens, size_t len);
 
 char* StringInput(const char* msg) {
 	changeTextColor(COLOR_YELLOW);
@@ -219,35 +226,40 @@ void displayPrecedenceTable() {
 	);
 }
 
-static bool s_answerInFraction = false;
+bool isRunning(void) { return s_isRunning; }
 
-void evaluateInput(Token* tokens, size_t startIdx, size_t len) {
-	NumVecClear(st);
+bool evaluateInput(const char* input) {
+	clock_gettime(CLOCK_MONOTONIC, &start);
+
+	size_t tokenLen = 0;
+	Token* tokens = tokenize(input, strlen(input), &tokenLen);
+
+	if (!tokens) return false;
+	if (tokenLen == 1) return true;
+
+	if (tokens[0].type == TK_AT_THE_RATE && tokenLen >= 3) {
+		char* command = tkToString(&tokens[1]);
+		const CommandEntry* ce = hashmap_get(s_commandTable, &command);
+		if (!ce) {
+			displayError(tokens[1], fstring("<y>%s</> is not a valid command.\n", command));
+			return false;
+		}
+		bool res = resolveCommand(ce, tokens, tokenLen);
+		if (ce->type != COMMAND_CLEAR && ce->type != COMMAND_EXIT) putchar('\n');
+		return res;
+	}
+
 	Function* ufn = parse(tokens, startIdx, len);
-
 	if (ufn) {
-		// if (evaluate(ufn)) {
-		// 	for (size_t i = 0; i < st->len; i++) {
-		// 		changeTextColor(COLOR_BLUE);
-		// 		printf("==> ");
-		// 		changeTextColor(COLOR_GREEN);
-		// 		if (ufn->insCount >= 2 && resultsInBool(ufn->instructions[ufn->insCount - 2])) {
-		// 			printf("%s\n", toBoolString(NumVecAt(st, i)));
-		// 		}
-		// 		else if (s_answerInFraction) {
-		// 			printf("%s\n", fractionalApproximation(NumVecAt(st, i)));
-		// 		}
-		// 		else {
-		// 			printf("%g\n", NumVecAt(st, i));
-		// 		}
-		// 		resetTextAttribute();
-		// 	}
-		// }
-		// else {
-		// 	freeLeftOutStrings(true);
-		// 	putchar('\n');
-		// }
-		if (!evaluate(ufn)) {
+		if (evaluate(ufn)) {
+			if (getEvaluationMode() == DIRECT && s_showTimestamp) {
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				double timeTaken = ((end.tv_sec - start.tv_sec) * 1000.0) + ((end.tv_nsec - start.tv_nsec) / 1e+6);
+				printStyledText(fstring(" <c>(in <b>%g<c> ms)\n", timeTaken));
+			}
+			return true;
+		}
+		else {
 			freeLeftOutStrings(true);
 			putchar('\n');
 		}
@@ -260,13 +272,14 @@ void evaluateInput(Token* tokens, size_t startIdx, size_t len) {
 	else {
 		printf("\n");
 	}
+	return false;
 }
 
-void listCommand(Token tk) {
+static bool listCommand(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("Missing option argument after list command\n"
 			"       Valid options: <c>vars</>, <c>bultins</>, <c>functions</>");
-		return;
+		return false;
 	}
 	if (strcmp(tkToString(&tk), "vars") == 0) {
 		displayVariables();
@@ -280,7 +293,9 @@ void listCommand(Token tk) {
 	else {
 		displayError(tk, "Invalid token after 'list' command\n"
 			"       Valid options: <c>vars</>, <c>bultins</>, <c>functions</>");
+		return false;
 	}
+	return true;
 }
 
 void loadCommands() {
@@ -305,10 +320,10 @@ void unloadCommands() {
 	hashmap_free(s_commandTable);
 }
 
-void removeCommand(Token* tokens, size_t len) {
+static bool removeCommand(Token* tokens, size_t len) {
 	if (len <= 3) {
 		displayError(tokens[1], "Expected a list of variable names after 'remove' command");
-		return;
+		return false;
 	}
 	PtrVec freeList = newPtrVec(8);
 	char* varName;
@@ -367,22 +382,27 @@ void removeCommand(Token* tokens, size_t len) {
 		}
 		expectComma = true;
 	}
-	if (!isInvalid && freeList.len != 0) {
-		for (size_t i = 0; i < freeList.len; i++) {
-			varName = (char*)PtrVecAt(&freeList, i);
-			hashmap_delete(g_symbolTable, &varName);
-			hashmap_delete(g_variables, &varName);
-			printStyledTextInBox(fstring("variable <c>%s</> deleted", varName));
-			free_str_from_pool(varName);
-		}
+
+	if (isInvalid || freeList.len == 0) {
+		PtrVecFree(&freeList);
+		return false;
+	}
+	
+	for (size_t i = 0; i < freeList.len; i++) {
+		varName = (char*)PtrVecAt(&freeList, i);
+		hashmap_delete(g_symbolTable, &varName);
+		hashmap_delete(g_variables, &varName);
+		printStyledTextInBox(fstring("variable <c>%s</> deleted", varName));
+		free_str_from_pool(varName);
 	}
 	PtrVecFree(&freeList);
+	return true;
 }
 
-static void changeDisplayMode(Token tk) {
+static bool changeDisplayMode(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("expected display mode option after '#y#display#r#' command");
-		return;
+		return false;
 	}
 	const char* command = tkToString(&tk);
 	if (strcmp("fraction", command) == 0) {
@@ -406,39 +426,46 @@ static void changeDisplayMode(Token tk) {
 	else {
 		displayError(tk, "Invalid option after 'display' command\n"
 			"       Valid options: <c>decimal</> or <c>fraction</>");
+		return false;
 	}
+	return true;
 }
 
-static void configTimestamp(Token tk) {
+static bool configTimestamp(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("expected <y>on</> or <y>off</> option after <c>timestamp</> command");
-		return;
+		return false;
 	}
+
 	const char* command = tkToString(&tk);
 	if (strcmp(command, "on") == 0) {
-		g_showTimestamp = true;
+		s_showTimestamp = true;
 	}
 	else if (strcmp(command, "off") == 0) {
-		g_showTimestamp = false;
+		s_showTimestamp = false;
 	}
 	else {
 		displayError(tk, "Invalid option after 'timestamp' command\n"
 			"       Valid options are: <c>on</> or <c>off</>");
+		return false;
 	}
+	return true;
 }
 
-static void resolveQuery(Token tk) {
+static bool resolveQuery(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("expected status option after <c>query</> command");
-		return;
+		return false;
 	}
 	
 	const char* command = tkToString(&tk);
 	if (strcmp(command, "display") == 0) {
-		printStyledTextInBox(fstring("Display mode is currently set to <y>%s</>", s_answerInFraction ? "fraction" : "decimal"));
+		printStyledTextInBox(fstring("Display mode is currently set to <y>%s</>",
+			s_answerInFraction ? "fraction" : "decimal"));
 	}
 	else if (strcmp(command, "angle") == 0) {
-		printStyledTextInBox(fstring("Angle unit is currently set to <y>%s</>", getAngleUnit() == DEGREE ? "degree" : "radian"));
+		printStyledTextInBox(fstring("Angle unit is currently set to <y>%s</>",
+			getAngleUnit() == DEGREE ? "degree" : "radian"));
 	}
 	else if (strcmp(command, "vars") == 0) {
 		size_t i = 0, bytes = 0;
@@ -453,14 +480,16 @@ static void resolveQuery(Token tk) {
 	else {
 		displayError(tk, "Invalid option after 'query' command\n"
 			"       Valid options are: <c>display</> or <c>angle</>");
+		return false;
 	}
+	return true;
 }
 
-static void changeAngleUnit(Token tk) {
+static bool changeAngleUnit(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("Missing option argument after list command\n"
 			"       Valid options: 'degree', 'radian'");
-		return;
+		return false;
 	}
 
 	const char* command = tkToString(&tk);
@@ -483,14 +512,16 @@ static void changeAngleUnit(Token tk) {
 	else {
 		displayError(tk, "Invalid token after 'angle' command\n"
 			"       Valid options: <g>degree</>, <g>radian</>");
+		return false;
 	}
+	return true;
 }
 
-static void changeEvalMode(Token tk) {
+static bool changeEvalMode(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("Missing option argument after eval_mode command\n"
 			"       Valid options: <g>detailed</>, <g>direct</>");
-		return;
+		return false;
 	}
 
 	const char* command = tkToString(&tk);
@@ -515,39 +546,31 @@ static void changeEvalMode(Token tk) {
 	else {
 		displayError(tk, "Invalid token after 'eval_mode' command\n"
 			"       Valid options: <g>detailed</>, <g>direct</>");
+		return false;
 	}
+	return true;
 }
 
-void resolveCommand(Token* tokens, size_t len, bool* isRunning) {
-	size_t idx = 1;
-	char* command = tkToString(&tokens[idx++]);
-
-	const CommandEntry* ce = hashmap_get(s_commandTable, &command);
-	if (!ce) {
-		displayError(tokens[1], fstring("<y>%s</> is not a valid command.\n", command));
-		return;
-	}
+static bool resolveCommand(const CommandEntry* ce, Token* tokens, size_t len) {
+	size_t idx = 2;
 	switch (ce->cmd) {
 		case COMMAND_ANGLE:
-			changeAngleUnit(tokens[idx]);
-			break;
+			return changeAngleUnit(tokens[idx]);
 
 		case COMMAND_CLEAR:
 			system("clear");
 			printStartingMsg();
-			return;
+			break;
 
 		case COMMAND_DISPLAY:
-			changeDisplayMode(tokens[idx]);
-			break;
+			return changeDisplayMode(tokens[idx]);
 
 		case COMMAND_EVAL_MODE:
-			changeEvalMode(tokens[idx]);
-			break;
+			return changeEvalMode(tokens[idx]);
 
 		case COMMAND_EXIT:
-			*isRunning = false;
-			return;
+			s_isRunning = false;
+			break;
 
 		case COMMAND_HELP:
 			system("clear");
@@ -555,26 +578,22 @@ void resolveCommand(Token* tokens, size_t len, bool* isRunning) {
 			break;
 
 		case COMMAND_LIST:
-			listCommand(tokens[idx]);
-			break;
+			return listCommand(tokens[idx]);
 			
 		case COMMAND_REMOVE:
-			removeCommand(tokens, len);
-			break;
+			return removeCommand(tokens, len);
 
 		case COMMAND_QUERY:
-			resolveQuery(tokens[idx]);
-			break;
+			return resolveQuery(tokens[idx]);
 
 		case COMMAND_PRECEDENCE:
 			displayPrecedenceTable();
 			break;
 
 		case COMMAND_TIMESTAMP:
-			configTimestamp(tokens[idx]);
-			break;
+			return configTimestamp(tokens[idx]);
 	}
-	putchar('\n');
+	return true;
 }
 
 void runInlineInputs(int argc, char* argv[]) {
