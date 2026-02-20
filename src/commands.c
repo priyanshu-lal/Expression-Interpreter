@@ -2,7 +2,9 @@
 #include "evaluator.h"
 #include "parser.h"
 #include "lexer.h"
+#include "logger.h"
 #include "utils.h"
+#include "allocator.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -385,6 +387,11 @@ static bool listCommand(Token tk) {
 		return false;
 	}
 	return true;
+}
+
+static void clearScreen() {
+	printf("\033[2J\033[H");
+	fflush(stdout);
 }
 
 static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {

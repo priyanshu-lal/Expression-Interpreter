@@ -23,6 +23,22 @@ double stopAndGetTimeInMs();
 
 static LARGE_INTEGER i_start, i_end, i_freq;
 
+void initPlatform() {
+	if (!SetConsoleOutputCP(CP_UTF8)) {
+		printf("[error]: Console does not support UTF-8\n");
+		exit(1);
+	}
+
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hOut == INVALID_HANDLE_VALUE) return;
+	
+	DWORD dwMode = 0;
+	if (GetConsoleMode(hOut, &dwMode)) {
+		dwMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+		SetConsoleMode(hOut, dwMode);
+	}
+}
+
 void startTimer() {
 	if (!QueryPerformanceFrequency(&i_freq)) {
 		printf("High-resolution performance counter not supported.\n");
@@ -38,28 +54,12 @@ double stopAndGetTimeInMs() {
 	return elapsedSeconds * 1e+3;
 }
 
-void initPlatform() {
-	SetConsoleOutputCP(CP_UTF8);
-
-	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hOut == INVALID_HANDLE_VALUE) return;
-	
-	DWORD dwMode = 0;
-	if (GetConsoleMode(hOut, &dwMode)) {
-		dwMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-		SetConsoleMode(hOut, dwMode);
-	}
-}
-
-void clearScreen() {
-	printf("\033[2J\033[H");
-	fflush(stdout);
-}
-
 #elif defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__unix__)
 
 #include <time.h>
 static struct timespec i_start, i_end;
+
+void initPlatform() { return; }
 
 void startTimer() {
 	clock_gettime(CLOCK_MONOTONIC, &i_start);
@@ -68,13 +68,6 @@ void startTimer() {
 double stopAndGetTimeInMs() {
 	clock_gettime(CLOCK_MONOTONIC, &i_end);
 	return ((i_end.tv_sec - i_start.tv_sec) * 1000.0) + ((i_end.tv_nsec - i_start.tv_nsec) / 1e+6);
-}
-
-void initPlatform() { return; }
-
-void clearScreen() {
-	printf("\033[2J\033[H");
-	fflush(stdout);
 }
 
 #else

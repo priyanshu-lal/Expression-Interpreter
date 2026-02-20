@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include "lexer.h"
+#include "evaluator.h"
 
 typedef enum {
 	COMMAND_ANGLE,
@@ -16,8 +17,6 @@ typedef enum {
 	COMMAND_PRECEDENCE,
 	COMMAND_TIMESTAMP
 } Command;
-
-enum EvalMode;
 
 void loadCommands();
 void unloadCommands();
