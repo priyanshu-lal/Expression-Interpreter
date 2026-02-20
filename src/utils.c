@@ -43,7 +43,19 @@ void initPlatform() {
 }
 
 void clearScreen() {
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hOut == INVALID_HANDLE_VALUE) return;
+	
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	DWORD cellCount, count;
+	COORD homeCoords = {0, 0};
 
+	if (!GetConsoleScreenBufferInfo(hOut, &csbi)) return;
+
+	cellCount = csbi.dwSize.X * csbi.dwSize.Y;
+	FillConsoleOutputCharacter(hOut, ' ', cellCount, homeCoords, &count);
+	FillConsoleOutputCharacter(hOut, csbi.wAttributes, cellCount, homeCoords, &count);
+	SetConsoleCursorPosition(hOut, homeCoords);
 }
 
 #elif defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__unix__)
@@ -63,7 +75,8 @@ double stopAndGetTimeInMs() {
 void initPlatform() { return; }
 
 void clearScreen() {
-	
+	printf("\033[2J\033[H");
+	fflush(stdout);
 }
 
 #else

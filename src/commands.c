@@ -2,6 +2,7 @@
 #include "evaluator.h"
 #include "parser.h"
 #include "lexer.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -401,7 +402,7 @@ static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
 			return changeAngleUnit(tokens[idx]);
 
 		case COMMAND_CLEAR:
-			system("clear");
+			clearScreen();
 			printStartingMsg();
 			break;
 
@@ -416,7 +417,7 @@ static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
 			break;
 
 		case COMMAND_HELP:
-			system("clear");
+			clearScreen();
 			displayHelpAndUsageGuide();
 			break;
 
