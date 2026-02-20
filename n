@@ -1,0 +1,177 @@
+
+ | 'def
+ | ^
+error: Unexpected character: '''
+
+
+ | Root(n,
+ | ~~~~
+error: 'Root' is not a valid identifier or keyword
+
+ | Root(n,
+ |      ^
+error: 'n' is not a valid identifier or keyword
+
+ | Root(n,
+ |       ^
+error: Invalid use of comma seperator, not inside function
+
+ | Root(n,
+ |       ^
+error: Expected an expression after ','
+warning: Missing 1 closing bracket
+
+ | p)
+ | ^
+error: 'p' is not a valid identifier or keyword
+
+ | p)
+ |  ^
+error: Unmatched closing bracket
+
+ | -
+ | ^
+error: Expected an expression after '-'
+
+ | (1/p);
+ |    ^
+error: 'p' is not a valid identifier or keyword
+
+ | def
+ | ~~~
+error: Expected function name after def keyword
+
+ | hypo
+ | ~~~~
+error: 'hypo' is not a valid identifier or keyword
+
+ | of
+ | ~~
+error: Expected an expression or function before `of` keyword
+
+ | of
+ | ~~
+error: Expected an expression after 'of'
+
+ | length
+ | ~~~~~~
+error: 'length' is not a valid identifier or keyword
+
+ | and
+ | ~~~
+error: Expected an expression before `and` operator
+
+ | and
+ | ~~~
+error: Expected an expression after 'and'
+
+ | breadth
+ | ~~~~~~~
+error: 'breadth' is not a valid identifier or keyword
+
+ | as
+ | ~~
+error: Invalid use of '=>', not a function decleration
+
+ | as
+ | ~~
+error: Expected an expression after 'as'
+
+ | Root(length2
+ | ~~~~
+error: 'Root' is not a valid identifier or keyword
+
+ | Root(length2
+ |      ~~~~~~~
+error: 'length2' is not a valid identifier or keyword
+warning: Missing 1 closing bracket
+
+ | +
+ | ^
+error: Expected an expression after '+'
+
+ | breadth2,
+ | ~~~~~~~~
+error: 'breadth2' is not a valid identifier or keyword
+
+ | breadth2,
+ |         ^
+error: Invalid use of comma seperator, not inside function
+
+ | breadth2,
+ |         ^
+error: Expected an expression after ','
+
+ | 2);
+ |  ^
+error: Unmatched closing bracket
+
+ | let
+ | ~~~
+error: Invalid use of 'let' keyword, not a decleration
+
+ | let
+ | ~~~
+error: Expected an expression after 'let'
+
+ | h
+ | ^
+error: 'h' is not a valid identifier or keyword
+
+ | be
+ | ~~
+error: Invalid use of `=` operator
+
+ | be
+ | ~~
+error: Expected an expression after 'be'
+
+ | round
+ | ~~~~~
+error: Expected an expression after 'round'
+
+ | of
+ | ~~
+error: Expected an expression or function before `of` keyword
+
+ | of
+ | ~~
+error: Expected an expression after 'of'
+
+ | hypo(x
+ | ~~~~
+error: 'hypo' is not a valid identifier or keyword
+
+ | hypo(x
+ |      ^
+error: 'x' is not a valid identifier or keyword
+warning: Missing 1 closing bracket
+
+ | =
+ | ^
+error: Invalid use of `=` operator
+
+ | =
+ | ^
+error: Expected an expression after '='
+
+ | 10,
+ |   ^
+error: Invalid use of comma seperator, not inside function
+
+ | 10,
+ |   ^
+error: Expected an expression after ','
+
+ | 2x);
+ |  ^
+error: 'x' is not a valid identifier or keyword
+
+ | 2x);
+ |   ^
+error: Unmatched closing bracket
+
+ | h'
+ |  ^
+error: Unexpected character: '''
+

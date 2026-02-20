@@ -7,14 +7,6 @@ project(ExpressionInterpreter
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ── Platform guard ────────────────────────────────────────────────────────────
-# if(WIN32)
-#     message(FATAL_ERROR
-#         "Windows is not yet supported. "
-#         "Build on a POSIX system (Linux, macOS, FreeBSD)."
-#     )
-# endif()
-
 # ── C standard ────────────────────────────────────────────────────────────────
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)

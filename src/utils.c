@@ -249,14 +249,17 @@ void runInlineInputs(int argc, char* argv[]) {
 				continue;
 			}
 		}
-		if ((tokens = tokenize(expr, strlen(expr), &tkLen)) != NULL) {
-			NumVecClear(st);
-			Function* ufn = parse(tokens, 0, tkLen);
-			if (ufn) {
-				if (!evaluate(ufn, DIRECT)) {
-					freeLeftOutStrings(true);
-					putchar('\n');
-				}
+		if ((tokens = tokenize(expr, strlen(expr), &tkLen)) == NULL) {
+			return;
+		}
+
+		Function* ufn = parse(tokens, 0, tkLen);
+		if (ufn && evaluate(ufn, getEvalMode())) {
+			Vector* accumulator = getAccumulator();
+			for (size_t i = 0; i < accumulator->len; i++) {
+				FinalResult res = *(FinalResult*)VecAt(accumulator, i);
+				if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
+				else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
 			}
 		}
 	}
