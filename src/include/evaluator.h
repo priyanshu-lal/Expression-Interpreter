@@ -37,10 +37,15 @@ enum {
 	OP_PUSH_PREV_ANS,
 };
 
-enum EvalMode {
+typedef enum EvalMode {
 	DIRECT,
 	DETAILED
-};
+} EvalMode;
+
+typedef struct {
+	double value;
+	bool isBool;
+} FinalResult;
 
 extern NumVec* st;  // defined in evaluator.c
 
@@ -53,5 +58,5 @@ bool resultsInBool(OpCode op);
 void setEvaluationMode(enum EvalMode);
 enum EvalMode getEvaluationMode(void);
 
-bool evaluate(const struct Function*);
-struct NumVec* getExecStack();
+bool evaluate(const struct Function*, EvalMode mode);
+Vector* getAccumulator();

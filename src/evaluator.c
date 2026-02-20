@@ -10,15 +10,9 @@
 #include <stdio.h>
 
 extern hashmap* g_newVarDeclMap;  // defined in parser.c
-extern struct timespec start, end;  // defined in utils.c
 
 NumVec* st;
 double g_answer = NAN;
-
-typedef struct {
-	double value;
-	bool isBool;
-} FinalResult;
 
 static Variable* varPtr;
 static bool firstErrInFn;
@@ -33,6 +27,9 @@ void freeEvaluator() {
 	VecClear(&s_accumulator);
 }
 
+void clearAccumulator() { VecClear(&s_accumulator); }
+Vector* getAccumulator() { return &s_accumulator; }
+
 void setEvaluationMode(enum EvalMode em) { s_evalMode = em; }
 enum EvalMode getEvaluationMode(void) { return s_evalMode; }
 
@@ -43,21 +40,10 @@ const char* toBoolString(double n) {
 	return n > 0.0 ? "true" : "false";
 }
 
-bool evaluate(const Function* fn) {
+bool evaluate(const Function* fn, EvalMode mode) {
 	VecClear(&s_accumulator);
 	NumVecClear(st);
-	
-	if (s_evalMode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn, 1)) {
-		
-
-		for (size_t i = 0; i < s_accumulator.len; i++) {
-			FinalResult res = *(FinalResult*)VecAt(&s_accumulator, i);
-			if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
-			else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
-		}
-		return 1;
-	}
-	return 0;
+	return mode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn, 1);
 }
 
 bool resultsInBool(OpCode op) {

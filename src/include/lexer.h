@@ -18,10 +18,10 @@ enum {
     TK_PIPE, TK_SEMICOLON, TK_EOL
 };
 
-typedef uint8_t TokenType;
+typedef uint8_t TokenKind;
 
 typedef struct Token {
-    TokenType type;
+    TokenKind type;
     unsigned int start, len;
 } Token;
 
