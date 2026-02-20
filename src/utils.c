@@ -40,22 +40,20 @@ double stopAndGetTimeInMs() {
 
 void initPlatform() {
 	SetConsoleOutputCP(CP_UTF8);
-}
 
-void clearScreen() {
 	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 	if (hOut == INVALID_HANDLE_VALUE) return;
 	
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	DWORD cellCount, count;
-	COORD homeCoords = {0, 0};
+	DWORD dwMode = 0;
+	if (GetConsoleMode(hOut, &dwMode)) {
+		dwMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+		SetConsoleMode(hOut, dwMode);
+	}
+}
 
-	if (!GetConsoleScreenBufferInfo(hOut, &csbi)) return;
-
-	cellCount = csbi.dwSize.X * csbi.dwSize.Y;
-	FillConsoleOutputCharacter(hOut, ' ', cellCount, homeCoords, &count);
-	FillConsoleOutputCharacter(hOut, csbi.wAttributes, cellCount, homeCoords, &count);
-	SetConsoleCursorPosition(hOut, homeCoords);
+void clearScreen() {
+	printf("\033[2J\033[H");
+	fflush(stdout);
 }
 
 #elif defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__unix__)

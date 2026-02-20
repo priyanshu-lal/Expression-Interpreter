@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include "lexer.h"
-#include "utils.h"
 
 typedef enum {
 	COMMAND_ANGLE,
