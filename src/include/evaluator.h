@@ -55,8 +55,5 @@ void freeEvaluator();
 const char* toBoolString(double n);
 bool resultsInBool(OpCode op);
 
-void setEvaluationMode(enum EvalMode);
-enum EvalMode getEvaluationMode(void);
-
 bool evaluate(const struct Function*, EvalMode mode);
 Vector* getAccumulator();

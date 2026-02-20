@@ -13,6 +13,7 @@
 #include "logger.h"
 #include "registry.h"
 #include "utils.h"
+#include "commands.h"
 #include "allocator.h"
 #include "parser.h"
 
@@ -20,12 +21,13 @@ static void freeResources() {
 	unloadCommands();
 	freeLexer();
 	unloadRegistry();
-	freeAllocators();
 	freeParser();
 	freeEvaluator();
+	freeAllocators();
 }
 
 int main(int argc, char* argv[]) {
+	initPlatform();
 	initLexer();
 	initAllocators();
 	loadRegistry();

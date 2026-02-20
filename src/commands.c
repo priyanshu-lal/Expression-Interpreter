@@ -1,4 +1,5 @@
 #include "commands.h"
+#include "evaluator.h"
 #include "parser.h"
 #include "lexer.h"
 
@@ -13,7 +14,8 @@ typedef struct {
 static hashmap* s_commandTable;
 static bool s_answerInFraction;
 static bool s_showTimestamp;
-static bool s_isRunning;
+static bool s_isRunning = true;
+static EvalMode s_evalMode = DIRECT;
 
 void loadCommands() {
 	s_commandTable = hashmap_new(sizeof(CommandEntry), 32, 0, 0,
@@ -38,8 +40,9 @@ void unloadCommands() {
 }
 
 bool isRunning() { return s_isRunning; }
-bool isShowTimeEnables() { return s_showTimestamp; }
+bool isShowTimeEnabled() { return s_showTimestamp; }
 bool isAnswerInFrcation() { return s_answerInFraction; }
+EvalMode getEvalMode() { return s_evalMode; }
 
 void displayVariables() {
 	if (hashmap_count(g_variables) == 0) {
@@ -315,17 +318,17 @@ static bool changeEvalMode(Token tk) {
 
 	const char* command = tkToString(&tk);
 	if (strcmp("detailed", command) == 0) {
-		if (getEvaluationMode() == DETAILED) {
+		if (s_evalMode == DETAILED) {
 			printStyledTextInBox("Evaluation mode is already set to <g>detailed</>");
 		}
 		else {
-			setEvaluationMode(DETAILED);
+			s_evalMode = DETAILED;
 			printStyledTextInBox("Evaluation mode changed: <c>direct</> <y>-></> <g>detailed</>");
 		}
 	}
 	else if (strcmp("direct", command) == 0) {
-		if (getEvaluationMode() == DETAILED) {
-			setEvaluationMode(DIRECT);
+		if (s_evalMode == DETAILED) {
+			s_evalMode = DIRECT;
 			printStyledTextInBox("Evaluation mode changed: <c>detailed</> <y>-></> <g>direct</>");
 		}
 		else {
@@ -383,7 +386,7 @@ static bool listCommand(Token tk) {
 	return true;
 }
 
-static bool resolveCommand(Token* tokens, size_t len) {
+static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
 	size_t idx = 1;
     char* command = tkToString(&tokens[idx++]);
     const CommandEntry* ce = hashmap_get(s_commandTable, &command);
@@ -391,6 +394,7 @@ static bool resolveCommand(Token* tokens, size_t len) {
 		displayError(tokens[1], fstring("<y>%s</> is not a valid command.\n", command));
 		return false;
 	}
+	if (outCmdType) *outCmdType = ce->cmd;
 
 	switch (ce->cmd) {
 		case COMMAND_ANGLE:

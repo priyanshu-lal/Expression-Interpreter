@@ -4,6 +4,73 @@
 #include <string.h>
 
 #include "utils.h"
+
+void startTimer();
+double stopAndGetTimeInMs();
+
+#if defined(_WIN32) || defined(_WIN64)
+
+// Maximum trimming extra parts
+#define WIN32_LEAN_AND_MEAN  // Excludes many APIs
+#define NOMINMAX             // Prevents min/max macros conflicting with C++ std
+#define NOKERNEL             // Excludes kernel APIs
+#define NOUSER               // Excludes user APIs
+#define NOSERVICE            // Excludes service APIs
+#define NOSOUND              // Excludes sound APIs
+#define NOMCX                // Excludes Media Control Extensions
+#define NOGDI                // Excludes Graphics Device Interface
+#include <windows.h>
+
+static LARGE_INTEGER i_start, i_end, i_freq;
+
+void startTimer() {
+	if (!QueryPerformanceFrequency(&i_freq)) {
+		printf("High-resolution performance counter not supported.\n");
+		abort();
+		return;
+	}
+	QueryPerformanceCounter(&i_start);
+}
+
+double stopAndGetTimeInMs() {
+	QueryPerformanceCounter(&i_end);
+	double elapsedSeconds = (double)(i_end.QuadPart - i_start.QuadPart) / i_freq.QuadPart;
+	return elapsedSeconds * 1e+3;
+}
+
+void initPlatform() {
+	SetConsoleOutputCP(CP_UTF8);
+}
+
+void clearScreen() {
+
+}
+
+#elif defined(__linux__) || (defined(__APPLE__) && defined(__MACH__)) || defined(__unix__)
+
+#include <time.h>
+static struct timespec i_start, i_end;
+
+void startTimer() {
+	clock_gettime(CLOCK_MONOTONIC, &i_start);
+}
+
+double stopAndGetTimeInMs() {
+	clock_gettime(CLOCK_MONOTONIC, &i_end);
+	return ((i_end.tv_sec - i_start.tv_sec) * 1000.0) + ((i_end.tv_nsec - i_start.tv_nsec) / 1e+6);
+}
+
+void initPlatform() { return; }
+
+void clearScreen() {
+	
+}
+
+#else
+#error "Unsupported Platform"
+#endif
+
+#include "utils.h"
 #include "logger.h"
 #include "parser.h"
 #include "container.h"
@@ -112,8 +179,7 @@ void displayHelpAndUsageGuide() {
 }
 
 bool evaluateInput(const char* input) {
-	// clock_gettime(CLOCK_MONOTONIC, &start);
-
+	startTimer();
 	size_t tokenLen = 0;
 	Token* tokens = tokenize(input, strlen(input), &tokenLen);
 
@@ -121,18 +187,19 @@ bool evaluateInput(const char* input) {
 	if (tokenLen == 1) return true;
 
 	if (tokens[0].type == TK_AT_THE_RATE && tokenLen >= 3) {
-		char* command = tkToString(&tokens[1]);
-		bool res = resolveCommand(tokens, tokenLen);
-		Command cmd = getCmdType(command);
+		Command cmd;
+		bool res = resolveCommand(tokens, tokenLen, &cmd);
 		if (cmd != COMMAND_CLEAR && cmd != COMMAND_EXIT) putchar('\n');
 		return res;
 	}
 
+	double timeInMs = 0.0;
 	Function* ufn = parse(tokens, 0, tokenLen);
+
 	if (ufn) {
-		if (evaluate(ufn, getEvaluationMode())) {
-			if (getEvaluationMode() == DIRECT && isShowTimeEnabled()) {
-				// clock_gettime(CLOCK_MONOTONIC, &end);
+		if (evaluate(ufn, getEvalMode())) {
+			if (getEvalMode() == DIRECT && isShowTimeEnabled()) {
+				timeInMs = stopAndGetTimeInMs();
 			}
 
 			Vector* accumulator = getAccumulator();
@@ -140,6 +207,10 @@ bool evaluateInput(const char* input) {
 				FinalResult res = *(FinalResult*)VecAt(accumulator, i);
 				if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
 				else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
+			}
+
+			if (getEvalMode() == DIRECT && isShowTimeEnabled()) {
+				printStyledText(fstring(" <c>(in <b>%g<c> ms)\n", timeInMs));
 			}
 			return true;
 		}

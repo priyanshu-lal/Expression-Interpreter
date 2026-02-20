@@ -20,7 +20,7 @@ static hashmap* s_keywordMap;
 typedef struct {
 	const char* keyword;
 	unsigned int len;
-	TokenType keyType;
+	TokenKind keyType;
 } KeywordEntry;
 
 uint64_t keywordHashCallback(const void *item, uint64_t seed0, uint64_t seed1) {
@@ -141,7 +141,7 @@ static bool match(char expected) {
 	return true;
 }
 
-static void addToken(TokenType type) {
+static void addToken(TokenKind type) {
 	if (s_idx > s_tkCapacity) {
 		s_tkCapacity *= 2;
 		void* ptr = realloc(s_tokens, sizeof(Token) * s_tkCapacity);

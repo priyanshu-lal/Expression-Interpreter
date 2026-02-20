@@ -30,6 +30,7 @@ endif()
 # ── Sources ───────────────────────────────────────────────────────────────────
 set(JADE_SOURCES
     src/allocator.c
+    src/commands.c
     src/container.c
     src/defs.c
     src/evaluator.c
@@ -67,7 +68,9 @@ target_compile_options(jade PRIVATE
 # ── Math & POSIX real-time library ────────────────────────────────────────────
 # clock_gettime() lives in librt on some older POSIX systems (not needed on
 # macOS / FreeBSD where it is part of libc).
-target_link_libraries(jade PRIVATE m)
+if(NOT WIN32)
+    target_link_libraries(jade PRIVATE m)
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # librt provides clock_gettime on older glibc (< 2.17).
@@ -92,6 +95,7 @@ endif()
 # ── Pre-compiled header ───────────────────────────────────────────────────────
 target_precompile_headers(jade PRIVATE
     src/include/allocator.h
+    src/include/commands.h
     src/include/container.h
     src/include/evaluator.h
     src/include/hashmap.h

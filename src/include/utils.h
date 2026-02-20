@@ -7,4 +7,5 @@ void displayHelpAndUsageGuide();
 
 void runInlineInputs(int argc, char* argv[]);
 bool evaluateInput(const char* input);
-void displayHelpAndUsageGuide();
+void initPlatform();
+void clearScreen();

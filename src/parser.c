@@ -18,7 +18,7 @@
 
 #define AS_FN_CALL_PTR(PTR) ((FnCallEntry*)(PTR))
 #define GET_FN_NAME(FN_PTR) (*(const char**)(FN_PTR))
-#define AS_TK_TYPE(PTR)     (*(TokenType*)(PTR))
+#define AS_TK_TYPE(PTR)     (*(TokenKind*)(PTR))
 #define AS_OP_CODE(PTR)     (*(OpCode*)(PTR))
 
 extern double g_answer;  // defined in evaluator.c
@@ -40,7 +40,7 @@ static NumVec* s_constants;
 static PtrVec* s_argNamePtr;    // element type: char* (no ownership)
 //------------------------
 
-static Vector* s_operatorStack;    // element type: TokenType
+static Vector* s_operatorStack;    // element type: TokenKind
 static Vector* s_fnStack;  // element type: FnCallEntry
 static Vector* s_singleArgFnStack; // element type: FnCallEntry
 static PtrVec* s_varDeclStack;     // element type: char* (no ownership)
@@ -109,7 +109,7 @@ void initParser() {
 
 	*s_varDeclStack = newPtrVec(8);
 	*s_fnStack = newVector(8, sizeof(FnCallEntry));
-	*s_operatorStack = newVector(64, sizeof(TokenType));
+	*s_operatorStack = newVector(64, sizeof(TokenKind));
 	*s_singleArgFnStack = newVector(8, sizeof(FnCallEntry));
 	// -----
 
@@ -147,9 +147,9 @@ void freeParser() {
 }
 
 static FORCE_INLINE void addInstruction(OpCode op) { VecPushByte(s_opCode, op); }
-static FORCE_INLINE void addOperator(TokenType opr) { VecPushByte(s_operatorStack, opr); }
-static FORCE_INLINE TokenType peekOperator() { return AS_TK_TYPE(VecTop(s_operatorStack)); }
-static FORCE_INLINE TokenType popOperator() { return AS_TK_TYPE(VecPopBack(s_operatorStack)); }
+static FORCE_INLINE void addOperator(TokenKind opr) { VecPushByte(s_operatorStack, opr); }
+static FORCE_INLINE TokenKind peekOperator() { return AS_TK_TYPE(VecTop(s_operatorStack)); }
+static FORCE_INLINE TokenKind popOperator() { return AS_TK_TYPE(VecPopBack(s_operatorStack)); }
 static FORCE_INLINE void addIndex(unsigned int i) { VecPush(s_indices, &i); }
 
 static struct FuncList* newNode(char* fnName) {
@@ -171,7 +171,7 @@ static inline bool advance() {
 	return false;
 }
 
-static OpCode tokenToInstruction(TokenType tk, bool* out_hasError) {
+static OpCode tokenToInstruction(TokenKind tk, bool* out_hasError) {
 	switch (tk) {
 	case TK_EXCLAIM: return OP_FACTORIAL;
 	case TK_CARET: return OP_POWER;
@@ -193,7 +193,7 @@ static OpCode tokenToInstruction(TokenType tk, bool* out_hasError) {
 	case TK_SM_EQ: return OP_SM_OR_EQ;
 	// case TK_KW_ELSE: return OP_TERNARY;
 
-	// bad terminology, but due to lack of matching TokenType and the need for different stacks,
+	// bad terminology, but due to lack of matching TokenKind and the need for different stacks,
 	// the parser uses TK_IDENTIFIER to mark call to single argument builtin functions,
 	// TK_COMMA to mark call to multi argument or variadic functions
 	// TK_DEF to mark call to single argument user defined functions
@@ -203,12 +203,12 @@ static OpCode tokenToInstruction(TokenType tk, bool* out_hasError) {
 
 	default:
 		if (out_hasError != NULL) *out_hasError = true;
-		displayErrorMsg(fstring("wrong TokenType supplied to tokenToInstruction(TokenType): %d\n", tk));
+		displayErrorMsg(fstring("wrong TokenKind supplied to tokenToInstruction(TokenKind): %d\n", tk));
 		return OP_LINE_DONE;
 	}
 }
 
-static FORCE_INLINE void performOperatorSpecificAction(TokenType sign) {
+static FORCE_INLINE void performOperatorSpecificAction(TokenKind sign) {
 	if (sign == TK_IDENTIFIER || sign == TK_KW_DEF) {
 		PtrVecPush(s_fnList, AS_FN_CALL_PTR(VecPopBack(s_singleArgFnStack))->fnPtr);
 	}
@@ -223,8 +223,8 @@ static FORCE_INLINE void performOperatorSpecificAction(TokenType sign) {
 	}
 }
 
-static void appendOperatorUntil(TokenType delimiter) {
-	TokenType sign;
+static void appendOperatorUntil(TokenKind delimiter) {
+	TokenKind sign;
 	while (s_operatorStack->len != 0 && (sign = popOperator()) != delimiter) {
 		bool hasError = false;
 		addInstruction(tokenToInstruction(sign, &hasError));
@@ -408,7 +408,7 @@ static ParseResult registerFunctionHeaderData() {
 	
 	bool expectsComma = false, isInvalid = false;
 	int argIdx = 0;
-	TokenType endToken = TK_CLOSE_PAREN;
+	TokenKind endToken = TK_CLOSE_PAREN;
 
 	if (currentTk.type == TK_IDENTIFIER) {
 		endToken = TK_ARROW;
@@ -700,7 +700,7 @@ static ParseResult resolveIdentifier() {
 	return OK;
 }
 
-static int precedence(TokenType tk) {
+static int precedence(TokenKind tk) {
 	switch (tk) {
 	case TK_IDENTIFIER:
 	case TK_KW_DEF:
@@ -772,12 +772,12 @@ static void insertInverseFunction() {
 	f->fnPtr = *(BuiltinFunction**)hashmap_get(g_functions, &identifier);
 }
 
-static inline bool isRightAssociative(TokenType tk) {
+static inline bool isRightAssociative(TokenKind tk) {
 	return tk == TK_CARET || tk == TK_EQUAL || tk == TK_KW_ELSE;
 }
 
 static void insertOperator(Token tk) {
-	TokenType sign;
+	TokenKind sign;
 	OpCode oc;
 
 	if (tk.type == TK_CARET && s_singleArgFnStack->len != 0 && idx + 2 < LEN
@@ -877,7 +877,7 @@ static bool checkExprEnding() {
 		return false;
 
 	while (s_operatorStack->len != 0) {
-		TokenType sign = popOperator();
+		TokenKind sign = popOperator();
 		bool hasError = false;
 		addInstruction(tokenToInstruction(sign, &hasError));
 		if (hasError) return false;

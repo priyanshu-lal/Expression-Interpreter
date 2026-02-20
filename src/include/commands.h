@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "lexer.h"
 
 typedef enum {
 	COMMAND_ANGLE,
@@ -16,6 +17,8 @@ typedef enum {
 	COMMAND_TIMESTAMP
 } Command;
 
+enum EvalMode;
+
 void loadCommands();
 void unloadCommands();
 
@@ -23,8 +26,8 @@ void displayVariables();
 void displayBuiltInFunctions();
 void displayUserFunctions();
 
-bool resolveCommand(Token* tokens, size_t len);
-Command getCmdType(const char* name);
+bool resolveCommand(Token* tokens, size_t len, Command* outCmdType);
 bool isRunning();
 bool isShowTimeEnabled();
 bool isAnswerInFrcation();
+enum EvalMode getEvalMode();

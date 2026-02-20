@@ -16,7 +16,6 @@ double g_answer = NAN;
 
 static Variable* varPtr;
 static bool firstErrInFn;
-static enum EvalMode s_evalMode = DIRECT;
 static Vector s_accumulator;  // element type: FinalResult
 
 void initEvaluator() {
@@ -29,9 +28,6 @@ void freeEvaluator() {
 
 void clearAccumulator() { VecClear(&s_accumulator); }
 Vector* getAccumulator() { return &s_accumulator; }
-
-void setEvaluationMode(enum EvalMode em) { s_evalMode = em; }
-enum EvalMode getEvaluationMode(void) { return s_evalMode; }
 
 static int evaluateDirectly(const Function*);
 static int evaluateInDetail(const Function*, int);

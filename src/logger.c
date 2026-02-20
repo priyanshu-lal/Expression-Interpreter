@@ -346,7 +346,7 @@ void changeTextColor(TextColor col) {
 	}
 }
 
-void resetColAndStyle() {
+void resetTextAttribute() {
 	SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
