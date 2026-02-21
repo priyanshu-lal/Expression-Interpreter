@@ -89,6 +89,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 	const BuiltinFunction* fn;
 	const Function* userFn = NULL;
 	firstErrInFn = false;
+	enum OP_CODE oc;
 	double n1, n2, res = 0.0;
 	char* varName;
 	
@@ -98,7 +99,8 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 	}
 
 	for (size_t i = 0; i < eUnit->insCount; i++) {
-		switch (eUnit->instructions[i]) {
+		oc = (enum OP_CODE)eUnit->instructions[i];
+		switch (oc) {
 		case OP_CALL_BUILTIN:
 			fn = eUnit->fnList[fnIdx++];
 
@@ -396,11 +398,13 @@ static bool evaluateDirectly(const Function* eUnit) {
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
 	const Function* userFn = NULL;
+	enum OP_CODE oc;
 	double n1, n2, res = 0.0;
 	char* varName;
 
 	for (size_t i = 0; i < eUnit->insCount; i++) {
-		switch (eUnit->instructions[i]) {
+		oc = (enum OP_CODE)eUnit->instructions[i];
+		switch (oc) {
         case OP_CALL_BUILTIN:
 			fn = eUnit->fnList[fnIdx++];
 			if (fn->fnPtr() == 0) {

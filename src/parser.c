@@ -147,7 +147,7 @@ void freeParser() {
 }
 
 static FORCE_INLINE void addInstruction(OpCode op) { VecPushByte(s_opCode, op); }
-static FORCE_INLINE void addOperator(TokenKind opr) { VecPushByte(s_operatorStack, opr); }
+static FORCE_INLINE void addOperator(TokenKind opr) { VecPush(s_operatorStack, &opr); }
 static FORCE_INLINE TokenKind peekOperator() { return AS_TK_TYPE(VecTop(s_operatorStack)); }
 static FORCE_INLINE TokenKind popOperator() { return AS_TK_TYPE(VecPopBack(s_operatorStack)); }
 static FORCE_INLINE void addIndex(unsigned int i) { VecPush(s_indices, &i); }

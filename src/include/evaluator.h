@@ -8,7 +8,7 @@ struct Function;
 
 typedef uint8_t OpCode;
 
-enum {
+enum OP_CODE {
 	OP_CALL_BUILTIN,
 	OP_CALL_DEFINED,
 	OP_PUSH_NUM,
