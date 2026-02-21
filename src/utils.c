@@ -5,8 +5,8 @@
 
 #include "utils.h"
 
-void startTimer();
-double stopAndGetTimeInMs();
+static void startTimer();
+static double stopAndGetTimeInMs();
 
 #if defined(_WIN32) || defined(_WIN64)
 
@@ -39,7 +39,7 @@ void initPlatform() {
 	}
 }
 
-void startTimer() {
+static void startTimer() {
 	if (!QueryPerformanceFrequency(&i_freq)) {
 		printf("High-resolution performance counter not supported.\n");
 		abort();
@@ -48,7 +48,7 @@ void startTimer() {
 	QueryPerformanceCounter(&i_start);
 }
 
-double stopAndGetTimeInMs() {
+static double stopAndGetTimeInMs() {
 	QueryPerformanceCounter(&i_end);
 	double elapsedSeconds = (double)(i_end.QuadPart - i_start.QuadPart) / i_freq.QuadPart;
 	return elapsedSeconds * 1e+3;
@@ -61,11 +61,11 @@ static struct timespec i_start, i_end;
 
 void initPlatform() { return; }
 
-void startTimer() {
+static void startTimer() {
 	clock_gettime(CLOCK_MONOTONIC, &i_start);
 }
 
-double stopAndGetTimeInMs() {
+static double stopAndGetTimeInMs() {
 	clock_gettime(CLOCK_MONOTONIC, &i_end);
 	return ((i_end.tv_sec - i_start.tv_sec) * 1000.0) + ((i_end.tv_nsec - i_start.tv_nsec) / 1e+6);
 }

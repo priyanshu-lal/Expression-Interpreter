@@ -29,8 +29,8 @@ void freeEvaluator() {
 void clearAccumulator() { VecClear(&s_accumulator); }
 Vector* getAccumulator() { return &s_accumulator; }
 
-static int evaluateDirectly(const Function*);
-static int evaluateInDetail(const Function*, int);
+static bool evaluateDirectly(const Function*);
+static bool evaluateInDetail(const Function*, int);
 
 const char* toBoolString(double n) {
 	return n > 0.0 ? "true" : "false";
@@ -82,7 +82,7 @@ static void logUserFnHeader(const Function* userFn, int indent) {
 	logDetail(indent + 1, "<c>│\n");
 }
 
-static int evaluateInDetail(const Function* eUnit, int indent) {
+static bool evaluateInDetail(const Function* eUnit, int indent) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	size_t startIdx;
 	unsigned iIdx;
@@ -230,7 +230,8 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 			n2 = floor(NumVecPopBack(st));
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
-				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
+				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
+				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
 			logDetail(indent, fstring("<c>│</> Floor divide (<c>%g <b>// <c>%g <b>= <g>%g</>)\n", 
@@ -390,7 +391,7 @@ static int evaluateInDetail(const Function* eUnit, int indent) {
 	return eUnit->key ? true : !isnan(g_answer);
 }
 
-static int evaluateDirectly(const Function* eUnit) {
+static bool evaluateDirectly(const Function* eUnit) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
@@ -486,7 +487,8 @@ static int evaluateDirectly(const Function* eUnit) {
 			n2 = floor(NumVecPopBack(st));
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
-				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
+				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
+				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
 			break;

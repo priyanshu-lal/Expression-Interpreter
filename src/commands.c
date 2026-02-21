@@ -72,7 +72,9 @@ void displayBuiltInFunctions() {
 	printStyledText("\n<y>Function List:\n");
 
 	while (hashmap_iter(g_functions, &i, (void**)&fnPtr)) {
+		changeTextColor(COLOR_BLUE);
 		printf("  %s", (*fnPtr)->key);
+		resetTextAttribute();
 
 		if ((*fnPtr)->isVariadic) {
 			printStyledText("(<c>...</>)\n");

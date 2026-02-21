@@ -49,6 +49,7 @@ static void setVariables() {
 	hashmap_set(g_variables, &(Variable){str_from_pool("phi"), 1.618033988749895});
 	hashmap_set(g_variables, &(Variable){str_from_pool("R"), 8.3144621});
 	hashmap_set(g_variables, &(Variable){str_from_pool("e"), 2.7182818284590452354});
+	hashmap_set(g_variables, &(Variable){str_from_pool("inf"), INFINITY});
 }
 
 static void setFunctions() {
