@@ -4,6 +4,13 @@
 #include <string.h>
 
 #include "utils.h"
+#include "logger.h"
+#include "parser.h"
+#include "container.h"
+#include "evaluator.h"
+#include "registry.h"
+#include "allocator.h"
+#include "commands.h"
 
 static void startTimer();
 static double stopAndGetTimeInMs();
@@ -73,15 +80,6 @@ static double stopAndGetTimeInMs() {
 #else
 #error "Unsupported Platform"
 #endif
-
-#include "utils.h"
-#include "logger.h"
-#include "parser.h"
-#include "container.h"
-#include "evaluator.h"
-#include "registry.h"
-#include "allocator.h"
-#include "commands.h"
 
 char* StringInput(const char* msg) {
 	changeTextColor(COLOR_YELLOW);
@@ -208,9 +206,16 @@ bool evaluateInput(const char* input) {
 
 			Vector* accumulator = getAccumulator();
 			for (size_t i = 0; i < accumulator->len; i++) {
-				FinalResult res = *(FinalResult*)VecAt(accumulator, i);
-				if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
-				else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
+				FinalResult* res = (FinalResult*)VecAt(accumulator, i);
+				if (res->isBool) {
+					printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res->value)));
+				}
+				else if (isAnswerInFrcation()) {
+					printStyledText(fstring("<b>==> <g>%s\n", fractionalApproximation(res->value)));
+				}
+				else {
+					printStyledText(fstring("<b>==> <g>%g\n", res->value));
+				}
 			}
 
 			if (getEvalMode() == DIRECT && isShowTimeEnabled()) {
@@ -257,9 +262,16 @@ void runInlineInputs(int argc, char* argv[]) {
 		if (ufn && evaluate(ufn, getEvalMode())) {
 			Vector* accumulator = getAccumulator();
 			for (size_t i = 0; i < accumulator->len; i++) {
-				FinalResult res = *(FinalResult*)VecAt(accumulator, i);
-				if (res.isBool) printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res.value)));
-				else  printStyledText(fstring("<b>==> <g>%g\n", res.value));
+				FinalResult* res = (FinalResult*)VecAt(accumulator, i);
+				if (res->isBool) {
+					printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res->value)));
+				}
+				else if (isAnswerInFrcation()) {
+					printStyledText(fstring("<b>==> <g>%s\n", fractionalApproximation(res->value)));
+				}
+				else {
+					printStyledText(fstring("<b>==> <g>%g\n", res->value));
+				}
 			}
 		}
 	}

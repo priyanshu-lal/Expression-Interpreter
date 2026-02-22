@@ -15,8 +15,8 @@ typedef struct {
 } CommandEntry;
 
 static hashmap* s_commandTable;
-static bool s_answerInFraction;
-static bool s_showTimestamp;
+static bool s_answerInFraction = false;
+static bool s_showTimestamp = false;
 static bool s_isRunning = true;
 static EvalMode s_evalMode = DIRECT;
 
@@ -363,7 +363,7 @@ void displayPrecedenceTable() {
 		"\n│   8   │ <y>not</>                  <c>│</> Logical NOT                                          <c>│"
 		"\n│   9   │ <y>and</>                  <c>│</> Logical AND                                          <c>│"
 		"\n│   10  │ <y>or</>                   <c>│</> Logical OR                                           <c>│"
-		"\n│   11  │ <y>=</>                    <c>│</> Assignment operator                                  <c>│"
+		"\n│   11  │ <y>=</>, <y>is</>                <c>│</> Assignment operator                                  <c>│"
 		"\n╰─────────────────────────────────────────────────────────────────────────────────────╯\n"
 	);
 }

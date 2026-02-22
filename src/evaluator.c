@@ -10,10 +10,9 @@
 #include <stdio.h>
 
 extern hashmap* g_newVarDeclMap;  // defined in parser.c
-
-NumVec* st;
 double g_answer = NAN;
 
+static NumVec* st;
 static Variable* varPtr;
 static bool firstErrInFn;
 static Vector s_accumulator;  // element type: FinalResult

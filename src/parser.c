@@ -527,8 +527,8 @@ static ParseResult declareNewFunction() {
 
 	if (sm) {
 		if (sm->type == BUILTIN_FUNCTION || sm->type == FUNCTION) {
-			displayError(currentTk, fstring("Cannot use %s as the function name as a "
-				"function with this name already exists", *identifier));
+			displayError(currentTk, fstring("Cannot use '%s' as the function name,"
+				" this name is already in use", *identifier));
 		}
 		else {
 			displayError(currentTk, "A variable with this name is already defined");
@@ -1110,7 +1110,7 @@ static bool parseInternal() {
 			break;
 
 		case TK_ARROW:
-			displayError(currentTk,"Invalid use of '=>', not a function decleration");
+			displayError(currentTk,"Invalid use of '->', not a function decleration");
 			break;
 
 		case TK_DOLLAR:
