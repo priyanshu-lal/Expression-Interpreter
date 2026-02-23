@@ -106,8 +106,10 @@ char* StringInput(const char* msg) {
 
 const char* fractionalApproximation(double num) {
 	static const double TOLERANCE = 1.0e-6;
+	static char buf[64];
 	if (doubleAbs(num - floor(num)) < TOLERANCE) {
-		return fstring("%lf", num);
+		snprintf(buf, 64, "%ld", (long)num);
+		return buf;
 	}
 	double fraction = 1.0;
 	double numerator = 1.0, denominator = 1.0;
@@ -128,7 +130,9 @@ const char* fractionalApproximation(double num) {
 		b = a % b;
 		a = tmp;
 	}
-	return fstring("%ld / %ld", (long)(numerator / a), (long)(denominator / a));
+	
+	snprintf(buf, 64, "%ld / %ld", (long)(numerator / a), (long)(denominator / a));
+	return buf;
 }
 
 void printStartingMsg() {

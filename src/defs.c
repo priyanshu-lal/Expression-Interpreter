@@ -6,6 +6,8 @@
 #include <math.h>
 #include <limits.h>
 #include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
 
 static int __toRadian();
 static int __toDegree();
@@ -37,6 +39,16 @@ static int logBase();
 static int maxFn();
 static int minFn();
 static int sumFn();
+static int truncateFn();
+static int sinhFn();
+static int coshFn();
+static int tanhFn();
+static int clampFn();
+static int copySignFn();
+static int asinhFn();
+static int acoshFn();
+static int atanhFn();
+static int randomFn();
 
 static void newBuiltinFunction(char* key, CalcFn ptr, int argsCount, bool isVariadic) {
 	BuiltinFunction* fn = arena_alloc(g_globArena, sizeof(BuiltinFunction));
@@ -61,6 +73,7 @@ static void setFunctions() {
 	newBuiltinFunction("cos", cosFn, 1, false);
 	newBuiltinFunction("tan", tanFn, 1, false);
 	newBuiltinFunction("log10", logFn, 1, false);
+	newBuiltinFunction("log", logFn, 1, false);
 	newBuiltinFunction("log2", log2Fn, 1, false);
 	newBuiltinFunction("asin", asinFn, 1, false);
 	newBuiltinFunction("acos", acosFn, 1, false);
@@ -83,6 +96,16 @@ static void setFunctions() {
 	newBuiltinFunction("slope", slopeFn, 4, false);
 	newBuiltinFunction("log_base", logBase, 2, false);
 	newBuiltinFunction("sum", sumFn, INT_MAX, true);
+	newBuiltinFunction("truncate", truncateFn, 1, false);
+	newBuiltinFunction("sinh", sinhFn, 1, false);
+	newBuiltinFunction("cosh", coshFn, 1, false);
+	newBuiltinFunction("tanh", tanhFn, 1, false);
+	newBuiltinFunction("clamp", clampFn, 3, false);
+	newBuiltinFunction("copy_sign", copySignFn, 3, false);
+	newBuiltinFunction("asinh", asinhFn, 1, false);
+	newBuiltinFunction("acosh", acoshFn, 1, false);
+	newBuiltinFunction("atanh", atanhFn, 1, false);
+	newBuiltinFunction("random", randomFn, 2, false);
 }
 
 static void populateSymbolTable() {
@@ -100,6 +123,7 @@ static void populateSymbolTable() {
 }
 
 void loadSymbols() {
+	srand(time(0));
 	setVariables();
 	setFunctions();
 	populateSymbolTable();
@@ -444,5 +468,62 @@ static int log2Fn() {
 
 static int lnFn() {
 	NumVecPush(st, log(NumVecPopBack(st)));
+	return 1;
+}
+
+static int truncateFn() {
+	NumVecPush(st, trunc(NumVecPopBack(st)));
+	return 1;
+}
+
+static int sinhFn(){
+	NumVecPush(st, sinh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int coshFn(){
+	NumVecPush(st, cosh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int tanhFn(){
+	NumVecPush(st, tanh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int clampFn() {
+	double maxVal = NumVecPopBack(st);
+	double minVal = NumVecPopBack(st);
+	double val = NumVecPopBack(st);
+	if (val < minVal) NumVecPush(st, minVal);
+	else if (val > maxVal) NumVecPush(st, maxVal);
+	else NumVecPush(st, val);
+	return 1;
+}
+
+static int copySignFn() {
+	double n2 = NumVecPopBack(st), n1 = NumVecPopBack(st);
+	NumVecPush(st, copysign(n1, n2));
+	return 1;
+}
+
+static int asinhFn() {
+	NumVecPush(st, asinh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int acoshFn() {
+	NumVecPush(st, acosh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int atanhFn() {
+	NumVecPush(st, acosh(NumVecPopBack(st)));
+	return 1;
+}
+
+static int randomFn() {
+	long u = (long)NumVecPopBack(st), l = (long)NumVecPopBack(st);
+	NumVecPush(st, (rand() % (u - l + 1)) + l);
 	return 1;
 }

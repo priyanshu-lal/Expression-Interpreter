@@ -133,13 +133,14 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			}
 
 			if (fn->fnPtr() == 0) {
-				printStyledTextInBox(fstring("<r>::</> function '<y>%s</>' threw an error, <r>aborting execution", fn->key));
+				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error%s",
+					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
 				startStackTrace(eUnit);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
-				printStyledTextInBox(fstring(
-					"<r>::</> function <y>%s</> returned an unexpected value, <r>aborting execution", fn->key));
+				printStyledTextInBox(fstring("<r>::</> function <y>%s</> returned an unexpected value%s",
+					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
 				startStackTrace(eUnit);
 				return false;
 			}
@@ -414,7 +415,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 		}
 	}
 	// return st->len == 0 ? false : !isnan(NumVecTop(st));
-	if (isnan(NumVecTop(st))) {
+	if (st->len != 0 && isnan(NumVecTop(st))) {
 		startStackTrace(eUnit);
 		return false;
 	}
@@ -436,13 +437,14 @@ static bool evaluateDirectly(const Function* eUnit) {
         case OP_CALL_BUILTIN:
 			fn = eUnit->fnList[fnIdx++];
 			if (fn->fnPtr() == 0) {
-				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error, <r>aborting execution", fn->key));
+				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error%s",
+					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
 				startStackTrace(eUnit);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
-				printStyledTextInBox(fstring(
-					"<r>::</> function <y>%s</> returned an unexpected value, <r>aborting execution", fn->key));
+				printStyledTextInBox(fstring("<r>::</> function <y>%s</> returned an unexpected value%s",
+					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
 				startStackTrace(eUnit);
 				return false;
 			}
@@ -645,7 +647,7 @@ static bool evaluateDirectly(const Function* eUnit) {
 			break;
         }
     }
-	if (isnan(NumVecTop(st))) {
+	if (st->len != 0 && isnan(NumVecTop(st))) {
 		startStackTrace(eUnit);
 		return false;
 	}

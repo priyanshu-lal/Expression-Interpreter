@@ -203,7 +203,7 @@ static OpCode tokenToInstruction(TokenKind tk, bool* out_hasError) {
 
 	default:
 		if (out_hasError != NULL) *out_hasError = true;
-		displayErrorMsg(fstring("wrong TokenKind supplied to tokenToInstruction(TokenKind): %d\n", tk));
+		// displayErrorMsg(fstring("wrong TokenKind supplied to tokenToInstruction(TokenKind): %d", tk));
 		return OP_LINE_DONE;
 	}
 }
@@ -1084,7 +1084,7 @@ static bool parseInternal() {
 			}
 			++s_exprCount;
 			s_bracketCount = 0;
-			s_expectExpr = true;
+			if (nextTk.type != TK_EOL) s_expectExpr = true;
 			while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;
 			prevTk = (Token) {TK_EOL, idx, 0};
 			if (!s_insideFnBody) addInstruction(OP_LINE_DONE);
