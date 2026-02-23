@@ -70,6 +70,14 @@ static void logDetail(int indentLevel, const char* msg) {
 	printStyledText(msg);
 }
 
+static inline void startStackTrace(const Function* fn) {
+	if (!fn->key) return;
+	printStyledTextInBox(fstring("<r>::</> An error occured inside function <y>%s</>, <r>aborting execution</>", fn->key));
+	// putchar('\n');
+	// displayErrorMsg(fstring("An error occured inside function <y>%s\n", fn->key));
+	printStyledText(fstring("\n<y>[<g>~<y>] <b>Stack Trace:</>\n    <g>*</>   <y>%s", fn->key));
+}
+
 static void logUserFnHeader(const Function* userFn, int indent) {
 	logDetail(indent, "<c>│\n");
 	logDetail(indent + 1, fstring("<c>╭</> <<y>%s</>(", userFn->key));
@@ -126,11 +134,13 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 
 			if (fn->fnPtr() == 0) {
 				printStyledTextInBox(fstring("<r>::</> function '<y>%s</>' threw an error, <r>aborting execution", fn->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
 				printStyledTextInBox(fstring(
 					"<r>::</> function <y>%s</> returned an unexpected value, <r>aborting execution", fn->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			printStyledText(fstring(" <g>-></> returned value: <g>%g\n", NumVecTop(st)));
@@ -146,6 +156,10 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			st->len = startIdx;
 			logUserFnHeader(userFn, indent);
 			if (!evaluateInDetail(userFn, indent + 1)) {
+				if (eUnit->key)
+					printStyledText(fstring(" <b><-- <y>%s</>", eUnit->key));
+				else
+					printStyledText(" <b><-- <g>main\n");
 				return false;
 			}
 
@@ -187,6 +201,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 
 			if (isnan(varPtr->value)) {
 				displayErrorMsg(fstring("Variable <b>%s</> is not initialized", varPtr->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			logDetail(indent, fstring("<c>│</> Take variable <b>%s</> (= <c>%g</>)\n",
@@ -221,6 +236,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			n1 = NumVecPopBack(st);
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
+				startStackTrace(eUnit);
 				return false;
 			}
 			logDetail(indent, fstring("<c>│</> Divide (<c>%g <b>/ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 / n2));
@@ -232,6 +248,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
+				startStackTrace(eUnit);
 				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
@@ -257,6 +274,11 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
         case OP_POWER:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
+			if (n1 < 0.0 && floor(n2) != n2) {
+				displayErrorMsg(fstring("While solving: (<c>%g</> ^ <c>%g</>), expected a positive value", n1, n2));
+				startStackTrace(eUnit);
+				return false;
+			}
 			NumVecPush(st, pow(n1, n2));
 			logDetail(indent, fstring("<c>│</> Power (<c>%g <b>^ <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
 			break;
@@ -264,7 +286,10 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
         case OP_FACTORIAL:
 			n1 = NumVecPopBack(st);
 			res = factorial(n1);
-			if (isnan(res)) return false;
+			if (isnan(res)) {
+				startStackTrace(eUnit);
+				return false;
+			}
 			NumVecPush(st, res);
 			logDetail(indent, fstring("<c>│</> Factorial of <c>%g</> (= <g>%g</>)\n", n1, res));
 			break;
@@ -389,7 +414,11 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 		}
 	}
 	// return st->len == 0 ? false : !isnan(NumVecTop(st));
-	return eUnit->key ? true : !isnan(g_answer);
+	if (isnan(NumVecTop(st))) {
+		startStackTrace(eUnit);
+		return false;
+	}
+	return true;
 }
 
 static bool evaluateDirectly(const Function* eUnit) {
@@ -407,12 +436,14 @@ static bool evaluateDirectly(const Function* eUnit) {
         case OP_CALL_BUILTIN:
 			fn = eUnit->fnList[fnIdx++];
 			if (fn->fnPtr() == 0) {
-				printStyledTextInBox(fstring("<r>::</> function '<y>%s</>' threw an error, <r>aborting execution", fn->key));
+				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error, <r>aborting execution", fn->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
 				printStyledTextInBox(fstring(
 					"<r>::</> function <y>%s</> returned an unexpected value, <r>aborting execution", fn->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			break;
@@ -425,6 +456,10 @@ static bool evaluateDirectly(const Function* eUnit) {
 			}
 			st->len = startIdx;
 			if (!evaluateDirectly(userFn)) {
+				if (eUnit->key)
+					printStyledText(fstring(" <b><-- <y>%s</>", eUnit->key));
+				else
+					printStyledText(" <b><-- <g>main\n");
 				return false;
 			}
 			break;
@@ -453,6 +488,7 @@ static bool evaluateDirectly(const Function* eUnit) {
 
 			if (isnan(varPtr->value)) {
 				displayErrorMsg(fstring("Variable <b>%s</> is not initialized", varPtr->key));
+				startStackTrace(eUnit);
 				return false;
 			}
 			NumVecPush(st, varPtr->value);
@@ -481,6 +517,7 @@ static bool evaluateDirectly(const Function* eUnit) {
 			n1 = NumVecPopBack(st);
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
+				startStackTrace(eUnit);
 				return false;
 			}
 			NumVecPush(st, n1 / n2);
@@ -491,6 +528,7 @@ static bool evaluateDirectly(const Function* eUnit) {
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
+				startStackTrace(eUnit);
 				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
@@ -510,13 +548,21 @@ static bool evaluateDirectly(const Function* eUnit) {
         case OP_POWER:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
+			if (n1 < 0.0 && floor(n2) != n2) {
+				displayErrorMsg(fstring("While solving: (<c>%g</> ^ <c>%g</>), expected a positive value", n1, n2));
+				startStackTrace(eUnit);
+				return false;
+			}
 			NumVecPush(st, pow(n1, n2));
 			break;
 
         case OP_FACTORIAL:
 			n1 = NumVecPopBack(st);
 			res = factorial(n1);
-			if (isnan(res)) return false;
+			if (isnan(res)) {
+				startStackTrace(eUnit);
+				return false;
+			}
 			NumVecPush(st, res);
 			break;
 
@@ -599,5 +645,9 @@ static bool evaluateDirectly(const Function* eUnit) {
 			break;
         }
     }
-	return eUnit->key ? true : !isnan(g_answer);
+	if (isnan(NumVecTop(st))) {
+		startStackTrace(eUnit);
+		return false;
+	}
+	return true;
 }

@@ -1150,7 +1150,7 @@ void freeLeftOutStrings(bool isCalledDuringEval) {
 	VarDeclEntry* varEntry;
 
 	if (isCalledDuringEval) {
-		printStyledText("<b>info:</> Due to runtime error,\n");
+		printStyledText("\n<b>info:</> Due to runtime error,\n");
 	}
 
 	while (hashmap_iter(g_newVarDeclMap, &i, (void**)&varEntry)) {
