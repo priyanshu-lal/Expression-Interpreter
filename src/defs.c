@@ -73,7 +73,7 @@ static void setFunctions() {
 	newBuiltinFunction("cos", cosFn, 1, false);
 	newBuiltinFunction("tan", tanFn, 1, false);
 	newBuiltinFunction("log10", logFn, 1, false);
-	newBuiltinFunction("log", logFn, 1, false);
+	newBuiltinFunction("log", logBase, 2, false);
 	newBuiltinFunction("log2", log2Fn, 1, false);
 	newBuiltinFunction("asin", asinFn, 1, false);
 	newBuiltinFunction("acos", acosFn, 1, false);
@@ -94,14 +94,13 @@ static void setFunctions() {
 	newBuiltinFunction("root", rootFn, 2, false);
 	newBuiltinFunction("distance", distanceFn, 4, false);
 	newBuiltinFunction("slope", slopeFn, 4, false);
-	newBuiltinFunction("log_base", logBase, 2, false);
 	newBuiltinFunction("sum", sumFn, INT_MAX, true);
 	newBuiltinFunction("truncate", truncateFn, 1, false);
 	newBuiltinFunction("sinh", sinhFn, 1, false);
 	newBuiltinFunction("cosh", coshFn, 1, false);
 	newBuiltinFunction("tanh", tanhFn, 1, false);
 	newBuiltinFunction("clamp", clampFn, 3, false);
-	newBuiltinFunction("copy_sign", copySignFn, 3, false);
+	newBuiltinFunction("copy_sign", copySignFn, 2, false);
 	newBuiltinFunction("asinh", asinhFn, 1, false);
 	newBuiltinFunction("acosh", acoshFn, 1, false);
 	newBuiltinFunction("atanh", atanhFn, 1, false);
@@ -257,7 +256,7 @@ static int slopeFn() {
 
 static int logBase() {
 	double n2 = NumVecPopBack(st), n1 = NumVecPopBack(st);
-	NumVecPush(st, log(n1) / log(n2));
+	NumVecPush(st, log(n2) / log(n1));
 	return 1;
 }
 
@@ -339,12 +338,11 @@ double factorial(double val) {
 		putchar('\n');
 		displayWarning(fstring("Factorial is not defined for floating-point numbers. Therefore,\n"
 			"         ignoring digit(s) after floating-point: (floor %g)! => %g!", val, num));
-		return 1;
 	}
 
 	if (num > 160.0) {
 		displayErrorMsg(fstring("%g! is too large to hold for 'double' data type", num));
-		return 0;
+		return NAN;
 	}
 	num += 0.01;
 	double fac = 1.0;

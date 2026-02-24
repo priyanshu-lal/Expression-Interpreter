@@ -8,6 +8,7 @@
 Arena* g_globArena;
 PoolAllocator* g_s8Pool;
 PoolAllocator* g_s16Pool;
+PoolAllocator* g_s4Pool;
 
 static inline size_t align_forward(size_t value, size_t alignment) {
 	assert((alignment & (alignment - 1)) == 0); /* Power of 2 check */
@@ -278,21 +279,26 @@ void pool_destroy(PoolAllocator* pool) {
 void initAllocators() {
 	g_globArena = (Arena*)malloc(sizeof(Arena));
 	arena_init(g_globArena, 4096);
-	g_s8Pool = pool_create(sizeof(char) * 8, 256);
-	g_s16Pool = pool_create(sizeof(char) * 16, 32);
+	g_s8Pool = pool_create(sizeof(char) * 8, 128);
+	g_s4Pool = pool_create(sizeof(char) * 8, 128);
+	g_s16Pool = pool_create(sizeof(char) * 16, 128);
 }
 
 void freeAllocators() {
 	arena_destroy(g_globArena);
 	free(g_globArena);
 	pool_destroy(g_s8Pool);
+	pool_destroy(g_s4Pool);
 	pool_destroy(g_s16Pool);
 }
 
 char* str_from_pool(const char* str) {
 	const size_t len = strlen(str);
 	char* mem;
-	if (len < 8) {
+	if (len < 4) {
+		mem = pool_alloc(g_s4Pool);
+	}
+	else if (len < 8) {
 		mem = pool_alloc(g_s8Pool);
 	}
 	else if (len < 16) {
@@ -310,7 +316,10 @@ char* str_from_pool(const char* str) {
 
 void free_str_from_pool(char* str) {
 	size_t len = strlen(str);
-	if (len < 8) {
+	if (len < 4) {
+		pool_free(g_s4Pool, str);
+	}
+	else if (len < 8) {
 		pool_free(g_s8Pool, str);
 	}
 	else if (len < 16) {

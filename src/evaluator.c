@@ -75,7 +75,7 @@ static inline void startStackTrace(const Function* fn) {
 	printStyledTextInBox(fstring("<r>::</> An error occured inside function <y>%s</>, <r>aborting execution</>", fn->key));
 	// putchar('\n');
 	// displayErrorMsg(fstring("An error occured inside function <y>%s\n", fn->key));
-	printStyledText(fstring("\n<y>[<g>~<y>] <b>Stack Trace:</>\n    <g>*</>   <y>%s", fn->key));
+	printStyledText(fstring("\n<y>[<g>~<y>] <b>Stack Trace:</>\n      <r>*</> <y>%s", fn->key));
 }
 
 static void logUserFnHeader(const Function* userFn, int indent) {

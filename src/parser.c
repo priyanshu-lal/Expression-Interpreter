@@ -621,7 +621,7 @@ static void resolveLetKeyword() {
 		const SymbolType* sm;
 		if ((sm = hashmap_get(g_symbolTable, identifier))) {
 			if (sm->type == VARIABLE) {
-				displayError(currentTk, fstring("<y>%s</> is already defined, "
+				displayError(currentTk, fstring("%s is already defined, "
 					"'let' can only be used to declare new variables", tkToString(&currentTk)));
 			}
 			else {
@@ -949,7 +949,7 @@ static bool handleDollarOperator() {
 		return false;
 	}
 	if (!advance() || currentTk.type != TK_IDENTIFIER) {
-		displayError(currentTk, "missing global variable name after '$'");
+		displayError(currentTk, "Missing global variable name after '$'");
 		return false;
 	}
 	*identifier = getIdentifier(currentTk);
@@ -958,7 +958,8 @@ static bool handleDollarOperator() {
 		resolveVariable(symbolEntry->symbol);
 	}
 	else {
-		displayError(currentTk, "Expected global variable name after '$'");
+		displayError(currentTk, fstring("No global variable named '%s'", *identifier));
+		s_expectExpr = false;
 	}
 	return true;
 }

@@ -211,7 +211,8 @@ static bool tokenizeNumber() {
 		return false;
 	}
 	if (g_source[s_current - 1] == 'e' || g_source[s_current - 1] == 'E') {
-		if (s_current + 1 < s_srcLength && (g_source[s_current] == '+') && isDigit(g_source[s_current + 1])) {
+		if (s_current + 1 < s_srcLength && (g_source[s_current] == '+' || g_source[s_current] == '-')
+		&& isDigit(g_source[s_current + 1])) {
 			for (s_current += 1; s_current < s_srcLength && isDigit(g_source[s_current]); s_current++);
 		}
 		else if (s_current >= s_srcLength || !isDigit(g_source[s_current])) {

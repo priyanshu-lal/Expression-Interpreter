@@ -13,7 +13,6 @@ hashmap* g_userFunctions;
 extern void loadSymbols();
 static int ptrStringKeyCompare(const void* a, const void* b, void* udata);
 static uint64_t ptrStringKeyHash(const void* item, uint64_t seed0, uint64_t seed1);
-static void freeFunctionCallback(void* ptr);
 
 void loadRegistry() {
 	st = arena_alloc(g_globArena, sizeof(NumVec));
@@ -22,7 +21,7 @@ void loadRegistry() {
 		stringKeyHash, stringKeyCompare, NULL, NULL);
 
 	g_userFunctions = hashmap_new(sizeof(Function*), 64, 0, 0,
-		ptrStringKeyHash, ptrStringKeyCompare, freeFunctionCallback, NULL);
+		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
 
 	g_functions = hashmap_new(sizeof(BuiltinFunction*), 128, 0, 0,
 		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
@@ -59,9 +58,9 @@ uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
 	return hashmap_xxhash3(key, strlen(key), seed0, seed1);
 }
 
-static void freeFunctionCallback(void* ptr) {
-	free_str_from_pool(**(char***)ptr);
-}
+// static void freeFunctionCallback(void* ptr) {
+// 	free_str_from_pool(**(char***)ptr);
+// }
 
 // int stringArKeyCompare(const void* a, const void* b, void* udata) {
 // 	return strcmp((char*)a, *(const char**)b);

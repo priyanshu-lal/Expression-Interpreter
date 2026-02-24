@@ -67,14 +67,12 @@ void displayVariables() {
 }
 
 void displayBuiltInFunctions() {
-	size_t i = 0;
+	size_t i = 0, k = 0;
 	const BuiltinFunction** fnPtr;
 	printStyledText("\n<y>Function List:\n");
 
 	while (hashmap_iter(g_functions, &i, (void**)&fnPtr)) {
-		changeTextColor(COLOR_BLUE);
-		printf("  %s", (*fnPtr)->key);
-		resetTextAttribute();
+		printStyledText(fstring("  %zu) <b>%s", k++, (*fnPtr)->key));
 
 		if ((*fnPtr)->isVariadic) {
 			printStyledText("(<c>...</>)\n");
@@ -84,7 +82,7 @@ void displayBuiltInFunctions() {
 		}
 		else {
 			char c = 'a';
-			putchar('(');
+			printf(" (");
 			for (int i = 1; i < (*fnPtr)->argsCount; i++) {
 				printStyledText(fstring("<c>%c</>, ", c++));
 			}
@@ -158,11 +156,11 @@ static bool removeCommand(Token* tokens, size_t len) {
 		else if (keyType->type == VARIABLE) {
 			const VarDependecies* vd = hashmap_get(g_refEntries, &varName);
 			if (vd) {
-				displayError(currentTk, "Can't remove this variable as it's been referenced in the following function(s):");
+				displayError(currentTk, fstring("Cannot remove <g>%s</> as it's been referenced "
+					"in the following function(s):", varName));
 				struct FuncList* fList = vd->head;
-				int i = 1;
 				while (fList) {
-					printStyledText(fstring("          %d) <c>%s\n", i++, fList->fnName));
+					printStyledText(fstring("          <r>-> <c>%s\n", fList->fnName));
 					fList = fList->next;
 				}
 			}
@@ -236,9 +234,11 @@ static bool configTimestamp(Token tk) {
 
 	const char* command = tkToString(&tk);
 	if (strcmp(command, "on") == 0) {
+		printStyledTextInBox("Timestamp turned <g>on");
 		s_showTimestamp = true;
 	}
 	else if (strcmp(command, "off") == 0) {
+		printStyledTextInBox("Timestamp turned <r>off");
 		s_showTimestamp = false;
 	}
 	else {
