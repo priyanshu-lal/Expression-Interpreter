@@ -22,8 +22,9 @@ typedef struct {
 
 typedef struct {
 	char* key;
+	const char** argNames;
 	CalcFn fnPtr;
-	int argsCount;
+	unsigned argsCount;
 	bool isVariadic;
 } BuiltinFunction;
 

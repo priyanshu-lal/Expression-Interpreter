@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+
 #include "registry.h"
 #include "lexer.h"
 

@@ -95,41 +95,6 @@ const char* fstring(const char* fmt, ...) {
     return buffer;
 }
 
-void displayWarning(const char *msg) {
-	changeTextColor(COLOR_YELLOW);
-	printf("warning: ");
-	resetTextAttribute();
-	printStyledText(msg);
-	putchar('\n');
-}
-
-void printStyledTextInBox(const char* msg) {
-	const int LEN = getStyledTextLen(msg) + 2;
-	changeTextColor(COLOR_CYAN);
-	printf("╭");
-	for (int i = 0; i < LEN; ++i) {
-		printf("─");
-	}
-	printf("╮\n│ ");
-	resetTextAttribute();
-	printStyledText(msg);
-	changeTextColor(COLOR_CYAN);
-	printf(" │\n╰");
-	for (int i = 0; i < LEN; ++i) {
-		printf("─");
-	}
-	printf("╯\n");
-	resetTextAttribute();
-}
-
-void displayHint(const char *msg) {
-	changeTextColor(COLOR_CYAN);
-	printf("hint: ");
-	resetTextAttribute();
-	printStyledText(msg);
-	putchar('\n');
-}
-
 static void markError(int idx, int area, TextColor lineCol) {
     if (idx >= (int)strlen(g_source)) return;
     int j;
@@ -166,6 +131,46 @@ static void markError(int idx, int area, TextColor lineCol) {
     putchar('\n');
 }
 
+void displayWarningMsg(const char *msg) {
+	changeTextColor(COLOR_YELLOW);
+	printf("warning: ");
+	resetTextAttribute();
+	printStyledText(msg);
+	putchar('\n');
+}
+
+void displayWarning(struct Token tk, const char* msg) {
+	markError(tk.start, tk.len, COLOR_YELLOW);
+	displayWarningMsg(msg);
+}
+
+void printStyledTextInBox(const char* msg) {
+	const int LEN = getStyledTextLen(msg) + 2;
+	changeTextColor(COLOR_CYAN);
+	printf("╭");
+	for (int i = 0; i < LEN; ++i) {
+		printf("─");
+	}
+	printf("╮\n│ ");
+	resetTextAttribute();
+	printStyledText(msg);
+	changeTextColor(COLOR_CYAN);
+	printf(" │\n╰");
+	for (int i = 0; i < LEN; ++i) {
+		printf("─");
+	}
+	printf("╯\n");
+	resetTextAttribute();
+}
+
+void displayHint(const char *msg) {
+	changeTextColor(COLOR_CYAN);
+	printf("hint: ");
+	resetTextAttribute();
+	printStyledText(msg);
+	putchar('\n');
+}
+
 void displayError(Token tk, const char *msg) {
     markError(tk.start, tk.len, COLOR_RED);
 	changeTextColor(COLOR_RED);
@@ -178,6 +183,14 @@ void displayError(Token tk, const char *msg) {
 
 void displayNote(struct Token tk, const char* msg) {
 	markError(tk.start, tk.len, COLOR_CYAN);
+	changeTextColor(COLOR_CYAN);
+	printf("note: ");
+	resetTextAttribute();
+	printStyledText(msg);
+	putchar('\n');
+}
+
+void displayNoteMsg(const char* msg) {
 	changeTextColor(COLOR_CYAN);
 	printf("note: ");
 	resetTextAttribute();

@@ -24,8 +24,6 @@
 extern double g_answer;  // defined in evaluator.c
 
 // ======================= Static (local) Globals =======================
-static Function* s_intermediateFn;
-// static Function* s_ufnPtr;
 
 // containers:
 hashmap* g_newVarDeclMap;       // element type: VarDeclEntry
@@ -36,15 +34,18 @@ static PtrVec* s_varList;       // element type: char* (no ownership)
 static Vector* s_opCode;        // element type: OP_CODE
 static Vector* s_indices;       // element type: unsigned int
 static hashmap* s_fnArgsEntry;  // element type: ArgEntry
-static NumVec* s_constants;
 static PtrVec* s_argNamePtr;    // element type: char* (no ownership)
+static NumVec* s_constants;
 //------------------------
 
+// stacks:
 static Vector* s_operatorStack;    // element type: TokenKind
-static Vector* s_fnStack;  // element type: FnCallEntry
+static Vector* s_fnStack;          // element type: FnCallEntry
 static Vector* s_singleArgFnStack; // element type: FnCallEntry
 static PtrVec* s_varDeclStack;     // element type: char* (no ownership)
+//------------------------
 
+static Function* s_intermediateFn;
 static Token* tokens;  // contains the list of tokens
 static Token currentTk, nextTk, prevTk;
 static char** identifier;
@@ -842,6 +843,7 @@ static void emitMultiArgFunctionCall(FnCallEntry* fnE) {
 			*(char**)fnE->fnPtr, fnE->argsRequired, fnE->argsFound));
 		displayNote(fnE->tk, fstring("'%s' was called here", *(char**)fnE->fnPtr));
 	}
+
 	bool hasError = false;
 	addInstruction(tokenToInstruction(popOperator(), &hasError));
 	if (hasError) return;
@@ -856,7 +858,10 @@ static bool checkExprEnding() {
 		displayErrorMsg(fstring("%d pipe operator(s) missing or miss matched", s_pipeDepth));
 
 	if (s_bracketCount > 0) {
-		displayWarning(fstring("Missing %d closing bracket", s_bracketCount));
+		displayWarningMsg(fstring("Missing %d closing parentheses", s_bracketCount));
+		displayNoteMsg(fstring("Placing %d closing parentheses at the end in an attempt to fix this error\n",
+			s_bracketCount));
+
 		while (s_bracketCount-- != 0) {
 			if (s_fnStack->len != 0) {
 				FnCallEntry* fnE = AS_FN_CALL_PTR(VecTop(s_fnStack));
@@ -886,6 +891,8 @@ static bool checkExprEnding() {
 	return true;
 }
 
+static void handleCloseParentheses();
+
 static void handleAbsoluteExpression() {
 	if (s_pipeDepth > 0) {
 		if (s_expectExpr) {
@@ -894,12 +901,17 @@ static void handleAbsoluteExpression() {
 		}
 		else {
 			if (s_absExprParaCount[s_pipeDepth] > 0) {
-				displayError(currentTk, fstring(
-					"%d unmatched opening bracket(s) inside this absolute expression",
+				displayWarning(currentTk, fstring(
+					"%d unmatched opening parentheses inside this absolute expression",
 					s_absExprParaCount[s_pipeDepth]
 				));
-				s_bracketCount -= s_absExprParaCount[s_pipeDepth];
-				s_absExprParaCount[s_pipeDepth] = 0;
+				displayNoteMsg(fstring("Placing %d closing parentheses in an attempt to fix this error\n",
+					s_absExprParaCount[s_pipeDepth]));
+				while (s_absExprParaCount[s_pipeDepth] != 0) {
+					handleCloseParentheses();
+				}
+				// s_bracketCount -= s_absExprParaCount[s_pipeDepth];
+				// s_absExprParaCount[s_pipeDepth] = 0;
 			}
 			--s_pipeDepth;
 			if (g_errorCount != 0) return;
@@ -926,17 +938,26 @@ static ParseResult handleCommaSeperator() {
 		s_expectExpr = true;
 		return ERROR;
 	}
+
 	appendOperatorUntil(TK_OPEN_PAREN);
 	FnCallEntry* fnE = AS_FN_CALL_PTR(VecTop(s_fnStack));
 	if (fnE->innerParenCount > 0) {
-		displayError(currentTk,
-			fstring("Missing %d closing bracket(s) inside '%s' at input number %d",
+		displayWarning(currentTk,
+			fstring("Missing %d closing parentheses inside '%s' at input number %d",
 			fnE->innerParenCount, *(char**)fnE->fnPtr, fnE->argsFound + 1));
-		s_bracketCount -= fnE->innerParenCount;
+
+		displayNoteMsg(fstring("Placing %d closing parentheses in an attempt to fix this error\n",
+			fnE->innerParenCount));
+
+		while (fnE->innerParenCount != 0) {
+			handleCloseParentheses();
+		}
+		// s_bracketCount -= fnE->innerParenCount;
 		// TODO: instead of completely stoping when this error occurs, find a way to continue parsing to catch more errors
 		// need to rewrite some parentheses handling parts specially inside abs expr inside function
-		return FATAL_ERROR;
+		// return FATAL_ERROR;
 	}
+
 	++fnE->argsFound;
 	addOperator(TK_OPEN_PAREN);
 	s_expectExpr = true;
@@ -948,12 +969,15 @@ static bool handleDollarOperator() {
 		displayError(currentTk, "'$' can only be used inside function body to refer to global variables");
 		return false;
 	}
+
 	if (!advance() || currentTk.type != TK_IDENTIFIER) {
 		displayError(currentTk, "Missing global variable name after '$'");
 		return false;
 	}
+
 	*identifier = getIdentifier(currentTk);
 	const SymbolType* symbolEntry = (const SymbolType*)hashmap_get(g_symbolTable, identifier);
+
 	if (symbolEntry && symbolEntry->type == VARIABLE) {
 		resolveVariable(symbolEntry->symbol);
 	}
@@ -971,10 +995,10 @@ static void handleCloseParentheses() {
 	
 	if (s_pipeDepth != 0 && --s_absExprParaCount[s_pipeDepth] < 0) {
 		s_absExprParaCount[s_pipeDepth] = 0;
-		displayError(currentTk, "Unmatched closing bracket inside an absolute expression");
+		displayError(currentTk, "Unmatched closing parentheses inside an absolute expression");
 	}
 	else if (--s_bracketCount < 0) {
-		displayError(currentTk, "Unmatched closing bracket");
+		displayError(currentTk, "Unmatched closing parentheses");
 		s_bracketCount++;
 	}
 
@@ -1120,7 +1144,7 @@ static bool parseInternal() {
 
 		case TK_COMMA:
 			if (handleCommaSeperator() == FATAL_ERROR) {
-				displayWarning("parsing stopped here due to fatal error");
+				displayErrorMsg("parsing stopped here due to fatal error");
 				return false;
 			}
 			break;

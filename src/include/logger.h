@@ -21,8 +21,10 @@ const char* fstring(const char* fmt, ...);
 void displayError(struct Token tk, const char* msg);
 void displayErrorAt(const char* msg, int start, int area);
 void displayErrorMsg(const char* msg);
-void displayWarning(const char* msg);
+void displayWarningMsg(const char* msg);
+void displayWarning(struct Token tk, const char* msg);
 void displayNote(struct Token tk, const char* msg);
+void displayNoteMsg(const char* msg);
 void displayHint(const char* msg);
 //--------------------------------------------
 

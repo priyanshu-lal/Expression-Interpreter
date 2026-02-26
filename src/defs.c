@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 static int __toRadian();
 static int __toDegree();
@@ -50,9 +51,40 @@ static int acoshFn();
 static int atanhFn();
 static int randomFn();
 
-static void newBuiltinFunction(char* key, CalcFn ptr, int argsCount, bool isVariadic) {
+#define ARG_LEN 16
+const char* ARGNAMES[ARG_LEN] = {
+	"a", "b", "c", "d", "e", "f",
+	"g", "h", "j", "k", "l", "m",
+	"n", "o", "p", "q"
+};
+
+static void newBuiltinFunction(char* key, CalcFn ptr, bool argNameProvided, unsigned argsCount, ...) {
 	BuiltinFunction* fn = arena_alloc(g_globArena, sizeof(BuiltinFunction));
-	*fn = (BuiltinFunction) {key, ptr, argsCount, isVariadic};
+	fn->key = key;
+	fn->fnPtr = ptr;
+	fn->argsCount = argsCount;
+	
+	if (argsCount == UINT_MAX) {
+		fn->isVariadic = true;
+		fn->argNames = NULL;
+		return;
+	}
+
+	if (argNameProvided) {
+		va_list args;
+		va_start(args, argsCount);
+		fn->argNames = (const char**)arena_alloc(g_globArena, sizeof(char*) * argsCount);
+		va_end(args);
+	}
+	else if (argsCount == 1) {
+		fn->argNames = &ARGNAMES[12];
+	}
+	else if (argsCount <= ARG_LEN) {
+		fn->argNames = ARGNAMES;
+	}
+	else {
+		fn->argNames = NULL;
+	}
 	hashmap_set(g_functions, &fn);
 }
 
@@ -65,36 +97,36 @@ static void setVariables() {
 }
 
 static void setFunctions() {
-	newBuiltinFunction("sqrt", _sqrt, 1, false);
-	newBuiltinFunction("fib", fib, 1, false);
-	newBuiltinFunction("factorial", factorialFn, 1, false);
-	newBuiltinFunction("cbrt", _cbrt, 1, false);
-	newBuiltinFunction("sin", sinFn, 1, false);
-	newBuiltinFunction("cos", cosFn, 1, false);
-	newBuiltinFunction("tan", tanFn, 1, false);
-	newBuiltinFunction("log10", logFn, 1, false);
-	newBuiltinFunction("log", logBase, 2, false);
-	newBuiltinFunction("log2", log2Fn, 1, false);
-	newBuiltinFunction("asin", asinFn, 1, false);
-	newBuiltinFunction("acos", acosFn, 1, false);
-	newBuiltinFunction("atan", atanFn, 1, false);
-	newBuiltinFunction("round", roundFn, 1, false);
-	newBuiltinFunction("floor", floorFn, 1, false);
-	newBuiltinFunction("ceil", ceilFn, 1, false);
-	newBuiltinFunction("nPr", permutation, 2, false);
-	newBuiltinFunction("nCr", combination, 2, false);
-	newBuiltinFunction("rad", __toRadian, 1, false);
-	newBuiltinFunction("deg", __toDegree, 1, false);
+	newBuiltinFunction("sqrt", _sqrt, false, 1u);
+	newBuiltinFunction("fib", fib, false, 1u);
+	newBuiltinFunction("factorial", factorialFn, false, 1u);
+	newBuiltinFunction("cbrt", _cbrt, false, 1);
+	newBuiltinFunction("sin", sinFn, false, 1);
+	newBuiltinFunction("cos", cosFn, false, 1);
+	newBuiltinFunction("tan", tanFn, false, 1);
+	newBuiltinFunction("log10", logFn, false, 1);
+	newBuiltinFunction("log", logBase, false, 2);
+	newBuiltinFunction("log2", log2Fn, false, 1);
+	newBuiltinFunction("asin", asinFn, false, 1);
+	newBuiltinFunction("acos", acosFn, false, 1);
+	newBuiltinFunction("atan", atanFn, false, 1);
+	newBuiltinFunction("round", roundFn, false, 1);
+	newBuiltinFunction("floor", floorFn, false, 1);
+	newBuiltinFunction("ceil", ceilFn, false, 1);
+	newBuiltinFunction("nPr", permutation, true, 2, "n", "r");
+	newBuiltinFunction("nCr", combination, true, 2, "n", "r");
+	newBuiltinFunction("rad", __toRadian, true, 1, "angle");
+	newBuiltinFunction("deg", __toDegree, true, 1, "angle");
 	newBuiltinFunction("exp", expFn, 1, false);
 	newBuiltinFunction("ln", lnFn, 1, false);
-	newBuiltinFunction("mean", mean, INT_MAX, true);
-	newBuiltinFunction("lcm", lcm, INT_MAX, true);
-	newBuiltinFunction("max", maxFn, INT_MAX, true);
-	newBuiltinFunction("min", minFn, INT_MAX, true);
+	newBuiltinFunction("mean", mean, UINT_MAX, true);
+	newBuiltinFunction("lcm", lcm, UINT_MAX, true);
+	newBuiltinFunction("max", maxFn, UINT_MAX, true);
+	newBuiltinFunction("min", minFn, UINT_MAX, true);
 	newBuiltinFunction("root", rootFn, 2, false);
 	newBuiltinFunction("distance", distanceFn, 4, false);
 	newBuiltinFunction("slope", slopeFn, 4, false);
-	newBuiltinFunction("sum", sumFn, INT_MAX, true);
+	newBuiltinFunction("sum", sumFn, UINT_MAX, true);
 	newBuiltinFunction("truncate", truncateFn, 1, false);
 	newBuiltinFunction("sinh", sinhFn, 1, false);
 	newBuiltinFunction("cosh", coshFn, 1, false);
@@ -336,7 +368,7 @@ double factorial(double val) {
 
 	if (doubleAbs(val - num) > TOLERANCE) {
 		putchar('\n');
-		displayWarning(fstring("Factorial is not defined for floating-point numbers. Therefore,\n"
+		displayWarningMsg(fstring("Factorial is not defined for floating-point numbers. Therefore,\n"
 			"         ignoring digit(s) after floating-point: (floor %g)! => %g!", val, num));
 	}
 

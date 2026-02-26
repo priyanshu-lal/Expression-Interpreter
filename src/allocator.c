@@ -54,7 +54,7 @@ bool arena_init(Arena* arena, size_t initial_size) {
 }
 
 void* arena_alloc_aligned(Arena* arena, size_t size, size_t alignment) {
-	if (!arena || !arena->current || size == 0) {
+	if (!arena->current || size == 0) {
 		return NULL;
 	}
 	
