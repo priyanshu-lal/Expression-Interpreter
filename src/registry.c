@@ -4,6 +4,7 @@
 #include "allocator.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 hashmap* g_symbolTable;
 hashmap* g_variables;
@@ -56,6 +57,22 @@ int stringKeyCompare(const void* a, const void* b, void* udata) {
 uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1) {
 	const char* key = *(const char**)item;
 	return hashmap_xxhash3(key, strlen(key), seed0, seed1);
+}
+
+void displayFunctionProto(const Function* fn) {
+	changeTextColor(COLOR_BLUE);
+	printf("%s", fn->key);
+	resetTextAttribute();
+	putchar('(');
+	if (fn->argsCount == 0) {
+		putchar(')');
+		return;
+	}
+	for (unsigned i = 0; i < fn->argsCount - 1; i++) {
+		printStyledText(fstring("<c>%s</>, ", fn->argsName[i]));
+	}
+	printStyledText(fstring("<c>%s</>) - <b>%u</> instructions\n",
+		fn->argsName[fn->argsCount - 1], fn->insCount));
 }
 
 // static void freeFunctionCallback(void* ptr) {

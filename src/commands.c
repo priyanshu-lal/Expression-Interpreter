@@ -54,7 +54,8 @@ void displayVariables() {
 	}
 	size_t i = 0;
 	const Variable* vPtr;
-	printStyledText("\n<y>Variable List:\n");
+	putchar('\n');
+	printStyledTextInBox("<b>:: <y>Variable List");
 	while (hashmap_iter(g_variables, &i, (void**)&vPtr)) {
 		changeTextColor(COLOR_CYAN);
 		printf("  %s ", vPtr->key);
@@ -67,29 +68,36 @@ void displayVariables() {
 }
 
 void displayBuiltInFunctions() {
-	size_t i = 0, k = 0;
+	size_t i = 0, k = 1;
 	const BuiltinFunction** fnPtr;
-	printStyledText("\n<y>Function List:\n");
+	putchar('\n');
+	printStyledTextInBox("<b>:: <g>Function List:");
 
 	while (hashmap_iter(g_functions, &i, (void**)&fnPtr)) {
-		printStyledText(fstring("  %zu) <b>%s", k++, (*fnPtr)->key));
+		printStyledText(fstring("\n <c>%zu<g>. <y>%s", k++, (*fnPtr)->key));
 
+		changeTextColor(COLOR_CYAN);
+		printf("(");
 		if ((*fnPtr)->isVariadic) {
-			printStyledText("(<c>...</>)\n");
-		}
-		else if ((*fnPtr)->argsCount == 1) {
-			printStyledText("(<c>n</>)\n");
+			changeTextColor(COLOR_BLUE);
+			printf("...");
+			resetTextAttribute();
 		}
 		else {
-			char c = 'a';
-			printf(" (");
-			for (int i = 1; i < (*fnPtr)->argsCount; i++) {
-				printStyledText(fstring("<c>%c</>, ", c++));
+			for (unsigned i = 0; i < (*fnPtr)->argsCount - 1; i++) {
+				changeTextColor(COLOR_BLUE);
+				printf("%s", (*fnPtr)->argNames[i]);
+				changeTextColor(COLOR_CYAN);
+				printf(", ");
 			}
-			printStyledText(fstring("<c>%c</>)\n", c));
+			changeTextColor(COLOR_BLUE);
+			printf("%s", (*fnPtr)->argNames[(**fnPtr).argsCount - 1]);
+			
 		}
+		changeTextColor(COLOR_CYAN);
+		printf(")\n");
+		resetTextAttribute();
 	}
-	resetTextAttribute();
 }
 
 void displayUserFunctions() {
@@ -101,10 +109,15 @@ void displayUserFunctions() {
 	}
 	size_t i = 0, k = 1;
 	const Function** uFn;
-	printStyledText("\n<y>User Defined Functions:\n");
+	putchar('\n');
+	printStyledTextInBox("<b>:: <y>User Defined Functions");
 
 	while (hashmap_iter(g_userFunctions, &i, (void**)&uFn)) {
 		printStyledText(fstring("  %zu) <b>%s</>(", k++, (*uFn)->key));
+		if ((**uFn).argsCount == 0) {
+			printStyledText(fstring(") - <b>%u</> instructions\n", (*uFn)->insCount));
+			continue;
+		}
 		for (unsigned i = 0; i < (*uFn)->argsCount - 1; i++) {
 			printStyledText(fstring("<c>%s</>, ", (*uFn)->argsName[i]));
 		}
@@ -160,7 +173,10 @@ static bool removeCommand(Token* tokens, size_t len) {
 					"in the following function(s):", varName));
 				struct FuncList* fList = vd->head;
 				while (fList) {
-					printStyledText(fstring("          <r>-> <c>%s\n", fList->fnName));
+					char** fnNamePtr = &fList->fnName;
+					printStyledText("          <r>-> ");
+					displayFunctionProto(hashmap_get(g_userFunctions, &fnNamePtr));
+					putchar('\n');
 					fList = fList->next;
 				}
 			}

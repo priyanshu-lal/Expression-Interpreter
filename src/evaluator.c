@@ -81,12 +81,24 @@ static inline void startStackTrace(const Function* fn) {
 static void logUserFnHeader(const Function* userFn, int indent) {
 	logDetail(indent, "<c>│\n");
 	logDetail(indent + 1, fstring("<c>╭</> <<y>%s</>(", userFn->key));
-	for (unsigned i = 0; i < userFn->argsCount - 1; i++) {
-		printStyledText(fstring("<c>%s </>= <g>%g</>, ", userFn->argsName[i], userFn->inputValues[i]));
+	if (userFn->argsCount == 0) {
+		printf(")>\n");
 	}
-	printStyledText(fstring("<c>%s </>= <g>%g</>)>\n",
-		userFn->argsName[userFn->argsCount - 1], userFn->inputValues[userFn->argsCount - 1]));
+	else {
+		for (unsigned i = 0; i < userFn->argsCount - 1; i++) {
+			printStyledText(fstring("<c>%s </>= <g>%g</>, ", userFn->argsName[i], userFn->inputValues[i]));
+		}
+		printStyledText(fstring("<c>%s </>= <g>%g</>)>\n",
+			userFn->argsName[userFn->argsCount - 1], userFn->inputValues[userFn->argsCount - 1]));
+	}
 	logDetail(indent + 1, "<c>│\n");
+}
+
+double factorial(double);
+
+static inline double doubleAbs(double n) { 
+	if (n < 0.0) return n * -1;
+	return n;
 }
 
 static bool evaluateInDetail(const Function* eUnit, int indent) {

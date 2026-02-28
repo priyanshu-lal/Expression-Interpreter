@@ -50,6 +50,8 @@ static int asinhFn();
 static int acoshFn();
 static int atanhFn();
 static int randomFn();
+static int atan2Fn();
+static int productFn();
 
 #define ARG_LEN 16
 const char* ARGNAMES[ARG_LEN] = {
@@ -60,20 +62,18 @@ const char* ARGNAMES[ARG_LEN] = {
 
 static void newBuiltinFunction(char* key, CalcFn ptr, bool argNameProvided, unsigned argsCount, ...) {
 	BuiltinFunction* fn = arena_alloc(g_globArena, sizeof(BuiltinFunction));
-	fn->key = key;
-	fn->fnPtr = ptr;
-	fn->argsCount = argsCount;
+	*fn = (BuiltinFunction) {key, NULL, ptr, argsCount, false};
 	
 	if (argsCount == UINT_MAX) {
 		fn->isVariadic = true;
-		fn->argNames = NULL;
-		return;
 	}
-
-	if (argNameProvided) {
+	else if (argNameProvided) {
 		va_list args;
 		va_start(args, argsCount);
 		fn->argNames = (const char**)arena_alloc(g_globArena, sizeof(char*) * argsCount);
+		for (unsigned i = 0; i < argsCount; ++i) {
+			fn->argNames[i] = va_arg(args, char*);
+		}
 		va_end(args);
 	}
 	else if (argsCount == 1) {
@@ -81,9 +81,6 @@ static void newBuiltinFunction(char* key, CalcFn ptr, bool argNameProvided, unsi
 	}
 	else if (argsCount <= ARG_LEN) {
 		fn->argNames = ARGNAMES;
-	}
-	else {
-		fn->argNames = NULL;
 	}
 	hashmap_set(g_functions, &fn);
 }
@@ -98,14 +95,14 @@ static void setVariables() {
 
 static void setFunctions() {
 	newBuiltinFunction("sqrt", _sqrt, false, 1u);
-	newBuiltinFunction("fib", fib, false, 1u);
+	newBuiltinFunction("fib", fib, true, 1u, "range");
 	newBuiltinFunction("factorial", factorialFn, false, 1u);
 	newBuiltinFunction("cbrt", _cbrt, false, 1);
 	newBuiltinFunction("sin", sinFn, false, 1);
 	newBuiltinFunction("cos", cosFn, false, 1);
 	newBuiltinFunction("tan", tanFn, false, 1);
 	newBuiltinFunction("log10", logFn, false, 1);
-	newBuiltinFunction("log", logBase, false, 2);
+	newBuiltinFunction("log", logBase, true, 2, "base", "num");
 	newBuiltinFunction("log2", log2Fn, false, 1);
 	newBuiltinFunction("asin", asinFn, false, 1);
 	newBuiltinFunction("acos", acosFn, false, 1);
@@ -117,26 +114,29 @@ static void setFunctions() {
 	newBuiltinFunction("nCr", combination, true, 2, "n", "r");
 	newBuiltinFunction("rad", __toRadian, true, 1, "angle");
 	newBuiltinFunction("deg", __toDegree, true, 1, "angle");
-	newBuiltinFunction("exp", expFn, 1, false);
-	newBuiltinFunction("ln", lnFn, 1, false);
-	newBuiltinFunction("mean", mean, UINT_MAX, true);
-	newBuiltinFunction("lcm", lcm, UINT_MAX, true);
-	newBuiltinFunction("max", maxFn, UINT_MAX, true);
-	newBuiltinFunction("min", minFn, UINT_MAX, true);
-	newBuiltinFunction("root", rootFn, 2, false);
-	newBuiltinFunction("distance", distanceFn, 4, false);
-	newBuiltinFunction("slope", slopeFn, 4, false);
-	newBuiltinFunction("sum", sumFn, UINT_MAX, true);
-	newBuiltinFunction("truncate", truncateFn, 1, false);
-	newBuiltinFunction("sinh", sinhFn, 1, false);
-	newBuiltinFunction("cosh", coshFn, 1, false);
-	newBuiltinFunction("tanh", tanhFn, 1, false);
-	newBuiltinFunction("clamp", clampFn, 3, false);
-	newBuiltinFunction("copy_sign", copySignFn, 2, false);
-	newBuiltinFunction("asinh", asinhFn, 1, false);
-	newBuiltinFunction("acosh", acoshFn, 1, false);
-	newBuiltinFunction("atanh", atanhFn, 1, false);
-	newBuiltinFunction("random", randomFn, 2, false);
+	newBuiltinFunction("exp", expFn, false, 1);
+	newBuiltinFunction("ln", lnFn, false, 1);
+	newBuiltinFunction("mean", mean, false, UINT_MAX);
+	newBuiltinFunction("lcm", lcm, false, UINT_MAX);
+	newBuiltinFunction("max", maxFn, false, UINT_MAX);
+	newBuiltinFunction("min", minFn, false, UINT_MAX);
+	newBuiltinFunction("root", rootFn, true, 2, "n", "base");
+	newBuiltinFunction("distance", distanceFn, true, 4
+		, "x1", "y1", "x2", "y2");
+	newBuiltinFunction("slope", slopeFn, false, 4);
+	newBuiltinFunction("sum", sumFn, false, UINT_MAX);
+	newBuiltinFunction("truncate", truncateFn, false, 1);
+	newBuiltinFunction("sinh", sinhFn, false, 1);
+	newBuiltinFunction("cosh", coshFn, false, 1);
+	newBuiltinFunction("tanh", tanhFn, false, 1);
+	newBuiltinFunction("clamp", clampFn, true, 3, "value", "min", "max");
+	newBuiltinFunction("copy_sign", copySignFn, true, 2, "dest", "src");
+	newBuiltinFunction("asinh", asinhFn, false, 1);
+	newBuiltinFunction("acosh", acoshFn, false, 1);
+	newBuiltinFunction("atanh", atanhFn, false, 1);
+	newBuiltinFunction("random", randomFn, true, 2, "start", "end");
+	newBuiltinFunction("atan2", atan2Fn, true, 2, "x", "y");
+	newBuiltinFunction("product", productFn, false, UINT_MAX);
 }
 
 static void populateSymbolTable() {
@@ -335,6 +335,17 @@ static int mean() {
 	return 1;
 }
 
+static int productFn() {
+	if (!verifyArgCount("product")) return 0;
+	int args = (int) NumVecPopBack(st);
+	double p = 1.0;
+	for (int i = 0; i < args; ++i) {
+		p *= NumVecPopBack(st);
+	}
+	NumVecPush(st, p);
+	return 1;
+}
+
 static int _sqrt() {
 	double num = NumVecPopBack(st);
 	if (num < 0.0) {
@@ -350,6 +361,11 @@ static int _sqrt() {
 static int _cbrt() {
 	NumVecPush(st, cbrt(NumVecPopBack(st)));
 	return 1;
+}
+
+static inline double doubleAbs(double n) { 
+	if (n < 0.0) return n * -1;
+	return n;
 }
 
 double factorial(double val) {
@@ -382,6 +398,12 @@ double factorial(double val) {
 		fac *= i;
 	}
 	return fac;
+}
+
+static int atan2Fn() {
+	double x = NumVecPopBack(st), y = NumVecPopBack(st);
+	NumVecPush(st, atan2(x, y));
+	return 1;
 }
 
 static int factorialFn() {

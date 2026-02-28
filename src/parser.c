@@ -275,8 +275,33 @@ static ParseResult resolveBuiltinFunctionCall() {
 	return OK;
 }
 
+static ParseResult resolveZeroArgFuncCall(Function* fnPtr) {
+	Token fnToken = currentTk;
+	if (nextTk.type == TK_OPEN_PAREN) {
+		advance();
+		if (nextTk.type == TK_CLOSE_PAREN) {
+			advance();
+		}
+		else {
+			s_bracketCount++;
+			displayError(fnToken, fstring("Function '%s' takes 0 inputs", *identifier));
+			return ERROR;
+		}
+	}
+	PtrVecPush(s_fnList, fnPtr);
+	addInstruction(OP_CALL_DEFINED);
+	if (!s_expectExpr)
+		addInstruction(OP_MUL);
+	s_expectExpr = false;
+	return OK;
+}
+
 static ParseResult resolveFunctionCall() {
 	Function* fnPtr = *(Function**)hashmap_get(g_userFunctions, &identifier);
+
+	if (fnPtr->argsCount == 0) {
+		return resolveZeroArgFuncCall(fnPtr);
+	}
 
 	FnCallEntry callEntry = {
 		.tk = currentTk,
@@ -418,7 +443,7 @@ static ParseResult registerFunctionHeaderData() {
 		advance();
 	}
 	else {
-		displayError(nextTk, "Expected '(' after function name");
+		displayError(prevTk, "Expected '(' after function name");
 		return FATAL_ERROR;
 	}
 
@@ -544,7 +569,7 @@ static ParseResult declareNewFunction() {
 	s_currentFnName = str_from_pool(*identifier);
 	hashmap_clear(s_fnArgsEntry, true);
 	advance();
-	if (registerFunctionHeaderData() == FATAL_ERROR) {
+	if (currentTk.type != TK_ARROW && registerFunctionHeaderData() == FATAL_ERROR) {
 		freeFunctionMetadata();
 		return FATAL_ERROR;
 	}
