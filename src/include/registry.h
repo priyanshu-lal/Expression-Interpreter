@@ -52,8 +52,7 @@ NOTE 🧐:
 - this hashmap implementation stores a shallow copy of entries,
   it uses memcpy to copy data on its bucket
   	- memcpy copies N raw bytes to 'dest' starting from the given address 'src'
-  the implementation accepts data as: entry_type*
-    and copies sizeof(entry_type) raw bytes starting from the passed index
+  the implementation accepts data as: entry_type* and copies sizeof(entry_type)
 
 - g_functions and g_userFunctions stores the address of their corrosponding type
   the hashmap just contains pointers to actual data allocated and managed externally
@@ -69,8 +68,8 @@ NOTE 🧐:
 */
 
 extern hashmap* g_variables;      // entry type: Variable
-extern hashmap* g_functions;      // entry type: Function*, data passed and returned as: Function**
-extern hashmap* g_userFunctions;  // entry type: UserFunc*, data passed and returned as: UserFunc**
+extern hashmap* g_functions;      // entry type: Function*
+extern hashmap* g_userFunctions;  // entry type: UserFunc*
 //----------------------------------------------------------------------------------
 
 extern hashmap* g_symbolTable;    // entry type: SymbolType

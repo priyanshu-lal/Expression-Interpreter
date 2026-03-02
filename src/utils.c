@@ -17,7 +17,7 @@ static double stopAndGetTimeInMs();
 
 #if defined(_WIN32) || defined(_WIN64)
 
-// Maximum trimming extra parts
+// Trimming extra parts
 #define WIN32_LEAN_AND_MEAN  // Excludes many APIs
 #define NOMINMAX             // Prevents min/max macros conflicting with C++ std
 #define NOKERNEL             // Excludes kernel APIs
@@ -102,6 +102,11 @@ char* StringInput(const char* msg) {
 	}
 	str[len] = '\0';
 	return str;
+}
+
+static inline double doubleAbs(double n) { 
+	if (n < 0.0) return n * -1;
+	return n;
 }
 
 const char* fractionalApproximation(double num) {

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum {
+typedef enum TokenKind {
     TK_KW_AND, TK_KW_ANS, TK_KW_DEF, TK_KW_OF, TK_KW_OR, TK_KW_NOT,
     TK_KW_TRUE, TK_KW_FALSE, TK_KW_IF, TK_KW_ELSE,
     TK_ADD, TK_SUB, TK_DIV, TK_MUL, TK_MOD,

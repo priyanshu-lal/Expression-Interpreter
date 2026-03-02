@@ -2,6 +2,7 @@
 #include "hashmap.h"
 #include "container.h"
 #include "allocator.h"
+#include "logger.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,10 +25,10 @@ void loadRegistry() {
 	g_userFunctions = hashmap_new(sizeof(Function*), 64, 0, 0,
 		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
 
-	g_functions = hashmap_new(sizeof(BuiltinFunction*), 128, 0, 0,
+	g_functions = hashmap_new(sizeof(BuiltinFunction*), 256, 0xBadBeeFadedDeadULL, 0xBadBeeDeadBee,
 		ptrStringKeyHash, ptrStringKeyCompare, NULL, NULL);
 
-	g_symbolTable = hashmap_new(sizeof(SymbolType), 256, 0xDead3FacadeULL, 0xCafeFaccULL,
+	g_symbolTable = hashmap_new(sizeof(SymbolType), 512, 0xDead3FacadeULL, 0xAceCafeeeULL,
 		stringKeyHash, stringKeyCompare, NULL, NULL);
 
 	loadSymbols();
@@ -71,8 +72,7 @@ void displayFunctionProto(const Function* fn) {
 	for (unsigned i = 0; i < fn->argsCount - 1; i++) {
 		printStyledText(fstring("<c>%s</>, ", fn->argsName[i]));
 	}
-	printStyledText(fstring("<c>%s</>) - <b>%u</> instructions\n",
-		fn->argsName[fn->argsCount - 1], fn->insCount));
+	printStyledText(fstring("<c>%s</>)", fn->argsName[fn->argsCount - 1]));
 }
 
 // static void freeFunctionCallback(void* ptr) {

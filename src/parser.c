@@ -858,7 +858,7 @@ static void emitMultiArgFunctionCall(FnCallEntry* fnE) {
 	}
 	else if (fnE->argsFound > fnE->argsRequired) {
 		displayError(currentTk,
-			fstring("Function '%s' only expects %d inputs but %d inputs were provided",
+			fstring("Function '%s' expects only %d input(s) but %d inputs were provided",
 			*(char**)fnE->fnPtr, fnE->argsRequired, fnE->argsFound));
 		displayNote(fnE->tk, fstring("'%s' was called here", *(char**)fnE->fnPtr));
 	}

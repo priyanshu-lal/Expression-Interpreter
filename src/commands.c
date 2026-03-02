@@ -49,13 +49,13 @@ EvalMode getEvalMode() { return s_evalMode; }
 
 void displayVariables() {
 	if (hashmap_count(g_variables) == 0) {
-		printStyledText(" <y>:: Variable list is empty\n");
+		printStyledTextInBox(" <r>:: <y>Variable list is empty");
 		return;
 	}
 	size_t i = 0;
 	const Variable* vPtr;
 	putchar('\n');
-	printStyledTextInBox("<b>:: <y>Variable List");
+	printStyledTextInBox("<c>:: <y>Variable List");
 	while (hashmap_iter(g_variables, &i, (void**)&vPtr)) {
 		changeTextColor(COLOR_CYAN);
 		printf("  %s ", vPtr->key);
@@ -71,66 +71,56 @@ void displayBuiltInFunctions() {
 	size_t i = 0, k = 1;
 	const BuiltinFunction** fnPtr;
 	putchar('\n');
-	printStyledTextInBox("<b>:: <g>Function List:");
+	printStyledTextInBox("<c>:: <y>Function List");
 
 	while (hashmap_iter(g_functions, &i, (void**)&fnPtr)) {
-		printStyledText(fstring("\n <c>%zu<g>. <y>%s", k++, (*fnPtr)->key));
+		printStyledText(fstring("\n %zu. <b>%s", k++, (*fnPtr)->key));
 
-		changeTextColor(COLOR_CYAN);
 		printf("(");
 		if ((*fnPtr)->isVariadic) {
-			changeTextColor(COLOR_BLUE);
+			changeTextColor(COLOR_CYAN);
 			printf("...");
 			resetTextAttribute();
 		}
 		else {
 			for (unsigned i = 0; i < (*fnPtr)->argsCount - 1; i++) {
-				changeTextColor(COLOR_BLUE);
-				printf("%s", (*fnPtr)->argNames[i]);
 				changeTextColor(COLOR_CYAN);
+				printf("%s", (*fnPtr)->argNames[i]);
+				resetTextAttribute();
 				printf(", ");
 			}
-			changeTextColor(COLOR_BLUE);
+			changeTextColor(COLOR_CYAN);
 			printf("%s", (*fnPtr)->argNames[(**fnPtr).argsCount - 1]);
+			resetTextAttribute();
 			
 		}
-		changeTextColor(COLOR_CYAN);
 		printf(")\n");
-		resetTextAttribute();
 	}
 }
 
 void displayUserFunctions() {
 	if (hashmap_count(g_userFunctions) == 0) {
 		changeTextColor(COLOR_YELLOW);
-		puts(" :: No user defined function exists");
+		printStyledTextInBox(" <r>:: <y>No user defined function exists");
 		resetTextAttribute();
 		return;
 	}
 	size_t i = 0, k = 1;
 	const Function** uFn;
 	putchar('\n');
-	printStyledTextInBox("<b>:: <y>User Defined Functions");
+	printStyledTextInBox("<c>:: <y>User Defined Functions");
 
 	while (hashmap_iter(g_userFunctions, &i, (void**)&uFn)) {
-		printStyledText(fstring("  %zu) <b>%s</>(", k++, (*uFn)->key));
-		if ((**uFn).argsCount == 0) {
-			printStyledText(fstring(") - <b>%u</> instructions\n", (*uFn)->insCount));
-			continue;
-		}
-		for (unsigned i = 0; i < (*uFn)->argsCount - 1; i++) {
-			printStyledText(fstring("<c>%s</>, ", (*uFn)->argsName[i]));
-		}
-		// printf("%s) - \n", (*uFn)->argsName[(*uFn)->argsCount - 1]);
-		printStyledText(fstring("<c>%s</>) - <b>%u</> instructions\n",
-			(*uFn)->argsName[(*uFn)->argsCount - 1], (*uFn)->insCount));
+		printf("  %zu. ", k++);
+		displayFunctionProto(*uFn);
+		printStyledText(fstring(" - <b>%u</> instructions\n", (*uFn)->insCount));
 	}
 	
 }
 
 static bool removeCommand(Token* tokens, size_t len) {
 	if (len <= 3) {
-		displayError(tokens[1], "Expected a list of variable names after 'remove' command");
+		displayError(tokens[1], "Expected a list of variable names after <c>remove</> command");
 		return false;
 	}
 	PtrVec freeList = newPtrVec(8);
@@ -169,13 +159,13 @@ static bool removeCommand(Token* tokens, size_t len) {
 		else if (keyType->type == VARIABLE) {
 			const VarDependecies* vd = hashmap_get(g_refEntries, &varName);
 			if (vd) {
-				displayError(currentTk, fstring("Cannot remove <g>%s</> as it's been referenced "
+				displayError(currentTk, fstring("Cannot remove '%s' as it's been referenced "
 					"in the following function(s):", varName));
 				struct FuncList* fList = vd->head;
 				while (fList) {
 					char** fnNamePtr = &fList->fnName;
-					printStyledText("          <r>-> ");
-					displayFunctionProto(hashmap_get(g_userFunctions, &fnNamePtr));
+					printf("         * ");
+					displayFunctionProto(*(const Function**)hashmap_get(g_userFunctions, &fnNamePtr));
 					putchar('\n');
 					fList = fList->next;
 				}
@@ -212,7 +202,8 @@ static bool removeCommand(Token* tokens, size_t len) {
 
 static bool changeDisplayMode(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("expected display mode option after '#y#display#r#' command");
+		displayErrorMsg("Missing option argument after <c>display</> command"
+			"       Valid options: <g>decimal</> or <g>fraction</>");
 		return false;
 	}
 	const char* command = tkToString(&tk);
@@ -235,8 +226,8 @@ static bool changeDisplayMode(Token tk) {
 		}
 	}
 	else {
-		displayError(tk, "Invalid option after 'display' command\n"
-			"       Valid options: <c>decimal</> or <c>fraction</>");
+		displayError(tk, "Invalid option after <c>display</> command\n"
+			"       Valid options: <g>decimal</> or <g>fraction</>");
 		return false;
 	}
 	return true;
@@ -244,7 +235,7 @@ static bool changeDisplayMode(Token tk) {
 
 static bool configTimestamp(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("expected <y>on</> or <y>off</> option after <c>timestamp</> command");
+		displayErrorMsg("Expected <g>on</> or <g>off</> after <c>timestamp</> command");
 		return false;
 	}
 
@@ -258,8 +249,8 @@ static bool configTimestamp(Token tk) {
 		s_showTimestamp = false;
 	}
 	else {
-		displayError(tk, "Invalid option after 'timestamp' command\n"
-			"       Valid options are: <c>on</> or <c>off</>");
+		displayError(tk, "Invalid option after <c>timestamp</> command\n"
+			"       Valid options are: <g>on</> or <g>off</>");
 		return false;
 	}
 	return true;
@@ -267,7 +258,7 @@ static bool configTimestamp(Token tk) {
 
 static bool resolveQuery(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("expected status option after <c>query</> command");
+		displayErrorMsg("Expected status option after <c>query</> command");
 		return false;
 	}
 	
@@ -291,8 +282,8 @@ static bool resolveQuery(Token tk) {
 			hashmap_count(g_variables), (double)(bytes) / 1000.0));
 	}
 	else {
-		displayError(tk, "Invalid option after 'query' command\n"
-			"       Valid options are: <c>display</> or <c>angle</>");
+		displayError(tk, "Invalid option after <c>query</> command\n"
+			"       Valid options are: <g>display</> or <g>angle</>");
 		return false;
 	}
 	return true;
@@ -300,8 +291,8 @@ static bool resolveQuery(Token tk) {
 
 static bool changeAngleUnit(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("Missing option argument after list command\n"
-			"       Valid options: 'degree', 'radian'");
+		displayErrorMsg("Missing option argument after <c>angle</> command\n"
+			"       Valid options: <g>degree</>, <g>radian");
 		return false;
 	}
 
@@ -323,8 +314,8 @@ static bool changeAngleUnit(Token tk) {
 		}
 	}
 	else {
-		displayError(tk, "Invalid token after 'angle' command\n"
-			"       Valid options: <g>degree</>, <g>radian</>");
+		displayError(tk, "Invalid token after <c>angle</> command\n"
+			"       Valid options: <g>degree</>, <g>radian");
 		return false;
 	}
 	return true;
@@ -332,7 +323,7 @@ static bool changeAngleUnit(Token tk) {
 
 static bool changeEvalMode(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("Missing option argument after eval_mode command\n"
+		displayErrorMsg("Missing option argument after <c>eval_mode</> command\n"
 			"       Valid options: <g>detailed</>, <g>direct</>");
 		return false;
 	}
@@ -357,7 +348,7 @@ static bool changeEvalMode(Token tk) {
 		}
 	}
 	else {
-		displayError(tk, "Invalid token after 'eval_mode' command\n"
+		displayError(tk, "Invalid token after <c>eval_mode</> command\n"
 			"       Valid options: <g>detailed</>, <g>direct</>");
 		return false;
 	}
@@ -386,8 +377,8 @@ void displayPrecedenceTable() {
 
 static bool listCommand(Token tk) {
 	if (tk.type == TK_EOL) {
-		displayErrorMsg("Missing option argument after list command\n"
-			"       Valid options: <c>vars</>, <c>bultins</>, <c>functions</>");
+		displayErrorMsg("Missing option argument after <c>list</> command\n"
+			"       Valid options: <g>vars</>, <g>bultins</>, <g>functions</>");
 		return false;
 	}
 	if (strcmp(tkToString(&tk), "vars") == 0) {
@@ -400,8 +391,8 @@ static bool listCommand(Token tk) {
 		displayUserFunctions();
 	}
 	else {
-		displayError(tk, "Invalid token after 'list' command\n"
-			"       Valid options: <c>vars</>, <c>bultins</>, <c>functions</>");
+		displayError(tk, "Invalid option after <c>list</> command\n"
+			"       Valid options: <g>vars</>, <g>bultins</> and <g>functions</>");
 		return false;
 	}
 	return true;
@@ -417,7 +408,7 @@ static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
     char* command = tkToString(&tokens[idx++]);
     const CommandEntry* ce = hashmap_get(s_commandTable, &command);
 	if (!ce) {
-		displayError(tokens[1], fstring("<y>%s</> is not a valid command.\n", command));
+		displayError(tokens[1], fstring("'%s' is not a valid command.\n", command));
 		return false;
 	}
 	if (outCmdType) *outCmdType = ce->cmd;
