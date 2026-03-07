@@ -48,23 +48,16 @@ typedef struct {
 } SymbolType;
 
 /* ----------------------------------------------------------------------------------
-NOTE 🧐:
+NOTE:
 - this hashmap implementation stores a shallow copy of entries,
   it uses memcpy to copy data on its bucket
   	- memcpy copies N raw bytes to 'dest' starting from the given address 'src'
   the implementation accepts data as: entry_type* and copies sizeof(entry_type)
 
-- g_functions and g_userFunctions stores the address of their corrosponding type
-  the hashmap just contains pointers to actual data allocated and managed externally
-  the get function just returns pointer to data (which in this case is already a pointer)
+- g_functions and g_userFunctions stores the address of their corrosponding value type
+  which points to actual data allocated using arena_allocator
+  the hashmap_get on these two just returns pointer to data (which in this case is already a pointer)
     i.e return type: (entry_type**)
-
-- the actual entry data whose address g_functions and_userFunctions hold
-  are allocated on global arena and hence they can't be freed individually
-
-- to get the actual data inside g_userFunctions and g_functions,
-  cast the returned void* ptr by hashmap_get as:
-  entry_type* dataPtr = *(entry_type**)ptr;
 */
 
 extern hashmap* g_variables;      // entry type: Variable
@@ -86,5 +79,5 @@ void displayFunctionProto(const Function* fn);
 int stringKeyCompare(const void* a, const void* b, void* udata);
 uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1);
 
-enum AngleUnit getAngleUnit();
-void setAngleUnit(enum AngleUnit unit);
+enum AngleUnit getAngleUnit();  // implemented inside defs.c
+void setAngleUnit(enum AngleUnit unit);  // implemented inside defs.c

@@ -14,7 +14,7 @@ const char* g_source;
 static Token* s_tokens;
 static size_t s_start, s_current;
 static size_t s_tkLen, s_tkCapacity;
-static size_t s_srcLength, s_idx;
+static size_t s_idx;
 static hashmap* s_keywordMap;
 
 typedef struct {
@@ -135,7 +135,7 @@ static inline bool isAlpha(char ch) {
 }
 
 static bool match(char expected) {
-	if (s_current >= s_srcLength) return false;
+	if (g_source[s_current] == '\0') return false;
 	if (g_source[s_current] != expected) return false;
 	s_current++;
 	return true;
@@ -178,7 +178,7 @@ static bool tokenizeString() {
 
 static bool tokenizeNumber() {
 	bool pointFound = false, eFound = false;
-	for (; s_current < s_srcLength; s_current++) {
+	for (; g_source[s_current] != '\0'; s_current++) {
 		const char ch = g_source[s_current];
 		if (isDigit(ch)) {
 			continue;
@@ -211,11 +211,10 @@ static bool tokenizeNumber() {
 		return false;
 	}
 	if (g_source[s_current - 1] == 'e' || g_source[s_current - 1] == 'E') {
-		if (s_current + 1 < s_srcLength && (g_source[s_current] == '+' || g_source[s_current] == '-')
-		&& isDigit(g_source[s_current + 1])) {
-			for (s_current += 1; s_current < s_srcLength && isDigit(g_source[s_current]); s_current++);
+		if ((g_source[s_current] == '+' || g_source[s_current] == '-') && isDigit(g_source[s_current + 1])) {
+			for (s_current += 1; g_source[s_current] != '\0' && isDigit(g_source[s_current]); s_current++);
 		}
-		else if (s_current >= s_srcLength || !isDigit(g_source[s_current])) {
+		else if (g_source[s_current] == '\0' || !isDigit(g_source[s_current])) {
 			displayErrorAt(fstring("Mantissa part is missing, remove `%c` to fix this error", g_source[s_current - 1]), s_current - 1, 1);
 			return false;
 		}
@@ -224,13 +223,12 @@ static bool tokenizeNumber() {
 	return true;
 }
 
-Token* tokenize(const char* str, size_t len, size_t* outLen) {
+Token* tokenize(const char* str, size_t* outLen) {
 	if (!str) return NULL;
 	resetLexer();
 	g_source = str;
-	s_srcLength = len;
 
-	while (s_current < len) {
+	while (g_source[s_current] != '\0') {
 		s_start = s_current++;
 		const char ch = g_source[s_start];
 		switch (ch) {
@@ -293,14 +291,14 @@ Token* tokenize(const char* str, size_t len, size_t* outLen) {
 			return s_tokens;
 
 		case '\t':
-			displayErrorAt("Tab character is not allowed, use spaces", s_srcLength, 1);
+			displayErrorAt("Tab character is not allowed, use spaces", s_start, 1);
 			return NULL;
 
 		default:
 			if (isAlpha(ch)) {
 				if (!tokenizeString()) return NULL;
 			}
-			else if (isDigit(ch) || (s_current < len && ch == '.' && isDigit(g_source[s_current]))) {
+			else if (isDigit(ch) || (ch == '.' && isDigit(g_source[s_current]))) {
 				if (!tokenizeNumber()) return NULL;
 			}
 			else {

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <stdbool.h>
 #include "lexer.h"
 #include "evaluator.h"
+
+#include <stdbool.h>
 
 typedef enum {
 	COMMAND_ANGLE,

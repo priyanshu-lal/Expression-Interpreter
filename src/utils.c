@@ -192,7 +192,7 @@ void displayHelpAndUsageGuide() {
 bool evaluateInput(const char* input) {
 	startTimer();
 	size_t tokenLen = 0;
-	Token* tokens = tokenize(input, strlen(input), &tokenLen);
+	Token* tokens = tokenize(input, &tokenLen);
 
 	if (!tokens) return false;
 	if (tokenLen == 1) return true;
@@ -263,7 +263,7 @@ void runInlineInputs(int argc, char* argv[]) {
 				continue;
 			}
 		}
-		if ((tokens = tokenize(expr, strlen(expr), &tkLen)) == NULL) {
+		if ((tokens = tokenize(expr, &tkLen)) == NULL) {
 			return;
 		}
 

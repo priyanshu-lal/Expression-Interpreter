@@ -25,7 +25,7 @@ typedef struct Token {
 
 void initLexer();
 void freeLexer();
-Token* tokenize(const char* str, size_t len, size_t *outLen);
+Token* tokenize(const char* str, size_t *outLen);
 
 // the returned pointer is overriden after next call to the function
 // the retuened pointer is NOT heap allocated
