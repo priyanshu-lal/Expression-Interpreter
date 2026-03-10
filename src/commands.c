@@ -124,6 +124,8 @@ static bool removeCommand(Token* tokens, size_t len) {
 		return false;
 	}
 	PtrVec freeList = newPtrVec(8);
+	Vector typeList = newVector(8, sizeof(enum VarType));
+	enum VarType smType;
 	char* varName;
 	bool expectComma = false, isInvalid = false;
 	Token prevTk = {0};
@@ -143,7 +145,14 @@ static bool removeCommand(Token* tokens, size_t len) {
 			}
 		}
 		
-		if (currentTk.type != TK_IDENTIFIER) {
+		if (currentTk.type == TK_IDENTIFIER) {
+			smType = VARIABLE;
+		}
+		else if (currentTk.type == TK_KW_ALIAS && idx < len && tokens[idx].type == TK_IDENTIFIER) {
+			smType = ALIAS;
+			currentTk = tokens[idx++];
+		}
+		else {
 			isInvalid = true;
 			displayError(currentTk, "Expected a list of variable after 'remove' keyword");
 			break;
@@ -156,7 +165,7 @@ static bool removeCommand(Token* tokens, size_t len) {
 			displayError(currentTk, fstring("No variable named '%s' exists", varName));
 			isInvalid = true;
 		}
-		else if (keyType->type == VARIABLE) {
+		else if (keyType->type == VARIABLE && smType == VARIABLE) {
 			const VarDependecies* vd = hashmap_get(g_refEntries, &varName);
 			if (vd) {
 				displayError(currentTk, fstring("Cannot remove '%s' as it's been referenced "
@@ -172,7 +181,12 @@ static bool removeCommand(Token* tokens, size_t len) {
 			}
 			else {
 				PtrVecPush(&freeList, keyType->symbol);
+				VecPush(&typeList, &smType);
 			}
+		}
+		else if (keyType->type == ALIAS && smType == ALIAS) {
+			PtrVecPush(&freeList, keyType->symbol);
+			VecPush(&typeList, &smType);
 		}
 		else {
 			isInvalid = true;
@@ -186,17 +200,26 @@ static bool removeCommand(Token* tokens, size_t len) {
 
 	if (isInvalid || freeList.len == 0) {
 		PtrVecFree(&freeList);
+		VecFree(&typeList);
 		return false;
 	}
 	
 	for (size_t i = 0; i < freeList.len; i++) {
 		varName = (char*)PtrVecAt(&freeList, i);
+		smType = *(enum VarType*)VecAt(&typeList, i);
 		hashmap_delete(g_symbolTable, &varName);
-		hashmap_delete(g_variables, &varName);
-		printStyledTextInBox(fstring("variable <c>%s</> deleted", varName));
+
+		if (smType == VARIABLE) {
+			hashmap_delete(g_variables, &varName);
+			printStyledTextInBox(fstring("variable <c>%s</> deleted", varName));
+		}
+		else {
+			hashmap_delete(g_aliases, &varName);
+		}
 		free_str_from_pool(varName);
 	}
 	PtrVecFree(&freeList);
+	VecFree(&typeList);
 	return true;
 }
 

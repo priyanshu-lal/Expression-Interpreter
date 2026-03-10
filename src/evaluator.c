@@ -36,6 +36,7 @@ const char* toBoolString(double n) {
 }
 
 bool evaluate(const Function* fn, EvalMode mode) {
+	if (fn->insCount == 0) return true;
 	VecClear(&s_accumulator);
 	NumVecClear(st);
 	return mode == DIRECT ? evaluateDirectly(fn) : evaluateInDetail(fn, 1);

@@ -33,6 +33,7 @@ static LARGE_INTEGER i_start, i_end, i_freq;
 void initPlatform() {
 	if (!SetConsoleOutputCP(CP_UTF8)) {
 		printf("[error]: Console does not support UTF-8\n");
+		fflush(stdout);
 		exit(1);
 	}
 
@@ -49,6 +50,7 @@ void initPlatform() {
 static void startTimer() {
 	if (!QueryPerformanceFrequency(&i_freq)) {
 		printf("High-resolution performance counter not supported.\n");
+		fflush(stdout);
 		abort();
 		return;
 	}

@@ -28,6 +28,7 @@ extern double g_answer;  // defined in evaluator.c
 // containers:
 hashmap* g_newVarDeclMap;       // element type: VarDeclEntry
 hashmap* g_refEntries;          // element type: VarDependecies
+hashmap* g_aliases;      // element type: Alias
 static hashmap* s_tmpVarRecord; // element type: char* (no ownership)
 static PtrVec* s_fnList;        // element type: BuiltinFunction* or Function* (no ownership) depending on context
 static PtrVec* s_varList;       // element type: char* (no ownership)
@@ -120,6 +121,8 @@ void initParser() {
 
 	s_fnArgsEntry = hashmap_new(sizeof(ArgEntry), 32, 0, 0, 
 	stringKeyHash, stringKeyCompare, NULL, NULL);
+	g_aliases = hashmap_new(sizeof(Alias), 32, 0, 0,
+		stringKeyHash, stringKeyCompare, NULL, NULL);
 	g_newVarDeclMap = hashmap_new(sizeof(VarDeclEntry), 32, 0, 0,
 		stringKeyHash, stringKeyCompare, NULL, NULL);
 	s_tmpVarRecord = hashmap_new(sizeof(char*), 32, 0, 0,
@@ -142,6 +145,7 @@ void freeParser() {
 	VecFree(s_singleArgFnStack);
 
 	hashmap_free(s_fnArgsEntry);
+	hashmap_free(g_aliases);
 	hashmap_free(g_newVarDeclMap);
 	hashmap_free(s_tmpVarRecord);
 	hashmap_free(g_refEntries);
@@ -234,9 +238,7 @@ static void appendOperatorUntil(TokenKind delimiter) {
 	}
 }
 
-static ParseResult resolveBuiltinFunctionCall() {
-	BuiltinFunction* fnPtr = *(BuiltinFunction**)hashmap_get(g_functions, &identifier);
-
+static ParseResult resolveBuiltinFunctionCall(BuiltinFunction* fnPtr) {
 	FnCallEntry callEntry = {
 		.tk = currentTk,
 		.argsRequired = fnPtr->argsCount,
@@ -296,8 +298,7 @@ static ParseResult resolveZeroArgFuncCall(Function* fnPtr) {
 	return OK;
 }
 
-static ParseResult resolveFunctionCall() {
-	Function* fnPtr = *(Function**)hashmap_get(g_userFunctions, &identifier);
+static ParseResult resolveFunctionCall(Function* fnPtr) {
 
 	if (fnPtr->argsCount == 0) {
 		return resolveZeroArgFuncCall(fnPtr);
@@ -429,6 +430,70 @@ static ParseResult resolveNewVariableDecl() {
 	return OK;
 }
 
+static ParseResult resolveAlias() {
+	if (!(idx == 0 || prevTk.type == TK_SEMICOLON || s_insideFnBody)) {
+		displayError(currentTk, "Invalid use of <c>alias</> keyword, can't an alias here");
+		return FATAL_ERROR;
+	}
+	advance();
+	if (currentTk.type != TK_IDENTIFIER) {
+		displayError(currentTk, "Expected function name after <c>alias</> keyword");
+		return FATAL_ERROR;
+	}
+
+	*identifier = getIdentifier(currentTk);
+	const SymbolType* sm = hashmap_get(g_symbolTable, identifier);
+
+	if (!sm || sm->type == VARIABLE || sm->type == ALIAS) {
+		displayError(currentTk, "Expected a function name");
+		return ERROR;
+	}
+	advance();
+
+	bool isBuiltin;
+	void* fnPtr;
+	if (sm->type == FUNCTION) {
+		isBuiltin = false;
+		fnPtr = *(void**)hashmap_get(g_userFunctions, &identifier);
+	}
+	else {
+		isBuiltin = true;
+		fnPtr = *(void**)hashmap_get(g_functions, &identifier);
+	}
+
+	if (currentTk.type != TK_ARROW) {
+		displayError(currentTk, "Expected 'as' keyword or -> after function name");
+		return ERROR;
+	}
+	advance();
+
+	if (currentTk.type != TK_IDENTIFIER) {
+		displayError(currentTk, "Expected an identifier as alias name");
+		return ERROR;
+	}
+	*identifier = getIdentifier(currentTk);
+	if (hashmap_get(g_symbolTable, identifier)) {
+		displayError(currentTk, "Can't use this as alias, this name is already in use");
+		return ERROR;
+	}
+
+	if (nextTk.type != TK_SEMICOLON && nextTk.type != TK_EOL) {
+		displayError(nextTk, "Unexpected token. expected semicolon");
+		return FATAL_ERROR;
+	}
+
+	Alias alias;
+	alias.name = str_from_pool(*identifier);
+	alias.isBuiltin = isBuiltin;
+	if (isBuiltin) alias.bFn = fnPtr;
+	else alias.fn = fnPtr;
+	
+	hashmap_set(g_aliases, &alias);
+	hashmap_set(g_symbolTable, &(SymbolType){alias.name, ALIAS});
+	s_expectExpr = false;
+	return OK;
+}
+
 static ParseResult registerFunctionHeaderData() {
 	if (currentTk.type == TK_KW_OF) advance();
 	
@@ -472,10 +537,10 @@ static ParseResult registerFunctionHeaderData() {
 		if (sType && sType->type != VARIABLE) {
 			isInvalid = true;
 			if (sType->type == BUILTIN_FUNCTION) {
-				displayError(currentTk, "Can't use builtin function as argument name");
+				displayError(currentTk, "Can't use function as argument name");
 			}
-			else if (sType->type == FUNCTION) {
-				displayError(currentTk, fstring("A function named %s already exists, overwriting an existing function is not allowed"));
+			else if (sType->type == ALIAS) {
+				displayError(currentTk, fstring("Can't use alias as argument name"));
 			}
 			else {
 				displayError(currentTk, "Cannot use keywords as argument name");
@@ -552,7 +617,7 @@ static ParseResult declareNewFunction() {
 	const SymbolType* sm = hashmap_get(g_symbolTable, identifier);
 
 	if (sm) {
-		if (sm->type == BUILTIN_FUNCTION || sm->type == FUNCTION) {
+		if (sm->type == BUILTIN_FUNCTION || sm->type == FUNCTION || sm->type == ALIAS) {
 			displayError(currentTk, fstring("Cannot use '%s' as the function name,"
 				" this name is already in use", *identifier));
 		}
@@ -688,8 +753,13 @@ static ParseResult resolveIdentifier() {
 	if (symbolEntry) {
 		switch (symbolEntry->type) {
 			case VARIABLE:         return resolveVariable(symbolEntry->symbol);
-			case BUILTIN_FUNCTION: return resolveBuiltinFunctionCall();
-			case FUNCTION:         return resolveFunctionCall();
+			case BUILTIN_FUNCTION: return resolveBuiltinFunctionCall(*(BuiltinFunction**)hashmap_get(g_functions, &identifier));
+			case FUNCTION:         return resolveFunctionCall(*(Function**)hashmap_get(g_userFunctions, &identifier));
+
+			case ALIAS:
+				const Alias* alias = hashmap_get(g_aliases, identifier);
+				if (alias->isBuiltin) return resolveBuiltinFunctionCall(alias->bFn);
+				else return resolveFunctionCall(alias->fn);
 		}
 	}
 	
@@ -1090,6 +1160,10 @@ static bool parseInternal() {
 			if (declareNewFunction() == FATAL_ERROR) return false;
 			break;
 
+		case TK_KW_ALIAS:
+			if (resolveAlias() == FATAL_ERROR) return false;
+			break;
+
 		case TK_AT_THE_RATE:
 			displayError(currentTk, "Unexpected token");
 			return false;
@@ -1255,5 +1329,5 @@ Function* parse(Token* t, int startIdx, size_t len) {
 		return NULL;
 	}
 
-	return s_opCode->len == 0 ? NULL : packIntoFunction();
+	return packIntoFunction();
 }

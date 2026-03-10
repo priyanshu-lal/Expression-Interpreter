@@ -56,6 +56,7 @@ void initLexer() {
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"be", 2, TK_EQUAL});
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"let", 3, TK_KW_LET});
 	hashmap_set(s_keywordMap, &(KeywordEntry) {"as", 2, TK_ARROW});
+	hashmap_set(s_keywordMap, &(KeywordEntry) {"alias", 5, TK_KW_ALIAS});
 }
 
 void freeLexer() {
@@ -308,6 +309,7 @@ Token* tokenize(const char* str, size_t* outLen) {
 		}
 	}
 	s_tkLen = s_idx + 1;
+	s_start = s_current;
 	addToken(TK_EOL);
 	*outLen = s_tkLen;
 	return s_tokens;

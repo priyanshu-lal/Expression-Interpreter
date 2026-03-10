@@ -10,6 +10,7 @@
 typedef int(*CalcFn)(void);
 
 enum VarType {
+	ALIAS,
 	BUILTIN_FUNCTION,
 	FUNCTION,
 	VARIABLE,
@@ -41,6 +42,15 @@ typedef struct Function {
 	char** varList;      // list of Variable name (char*)
 	void** fnList;       // list of pointers to: Function* or BuiltinFunction* depending on instruction
 } Function;
+
+typedef struct {
+	char* name;
+	bool isBuiltin;
+	union {
+		BuiltinFunction* bFn;
+		Function* fn;	
+	};
+} Alias;
 
 typedef struct {
 	char* symbol;

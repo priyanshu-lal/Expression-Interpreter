@@ -17,6 +17,7 @@ typedef struct {
 } VarDependecies;
 
 extern hashmap* g_refEntries;
+extern hashmap* g_aliases;
 
 void initParser();
 void freeParser();
