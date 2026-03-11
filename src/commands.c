@@ -145,14 +145,7 @@ static bool removeCommand(Token* tokens, size_t len) {
 			}
 		}
 		
-		if (currentTk.type == TK_IDENTIFIER) {
-			smType = VARIABLE;
-		}
-		else if (currentTk.type == TK_KW_ALIAS && idx < len && tokens[idx].type == TK_IDENTIFIER) {
-			smType = ALIAS;
-			currentTk = tokens[idx++];
-		}
-		else {
+		if (currentTk.type != TK_IDENTIFIER) {
 			isInvalid = true;
 			displayError(currentTk, "Expected a list of variable after 'remove' keyword");
 			break;
@@ -165,7 +158,7 @@ static bool removeCommand(Token* tokens, size_t len) {
 			displayError(currentTk, fstring("No variable named '%s' exists", varName));
 			isInvalid = true;
 		}
-		else if (keyType->type == VARIABLE && smType == VARIABLE) {
+		else if (keyType->type == VARIABLE) {
 			const VarDependecies* vd = hashmap_get(g_refEntries, &varName);
 			if (vd) {
 				displayError(currentTk, fstring("Cannot remove '%s' as it's been referenced "
@@ -180,11 +173,13 @@ static bool removeCommand(Token* tokens, size_t len) {
 				}
 			}
 			else {
+				smType = VARIABLE;
 				PtrVecPush(&freeList, keyType->symbol);
 				VecPush(&typeList, &smType);
 			}
 		}
-		else if (keyType->type == ALIAS && smType == ALIAS) {
+		else if (keyType->type == ALIAS) {
+			smType = ALIAS;
 			PtrVecPush(&freeList, keyType->symbol);
 			VecPush(&typeList, &smType);
 		}
@@ -192,7 +187,7 @@ static bool removeCommand(Token* tokens, size_t len) {
 			isInvalid = true;
 			const char* typeStr = (keyType->type == FUNCTION || keyType->type == BUILTIN_FUNCTION)
 				? "function" : "keyword";
-			displayError(currentTk, fstring("Expected variable name, found %s '%s'",
+			displayError(currentTk, fstring("Expected variable or alias name, found %s '%s'",
 				typeStr, varName));
 		}
 		expectComma = true;
@@ -215,6 +210,7 @@ static bool removeCommand(Token* tokens, size_t len) {
 		}
 		else {
 			hashmap_delete(g_aliases, &varName);
+			printStyledTextInBox(fstring("alias <c>%s</> deleted", varName));
 		}
 		free_str_from_pool(varName);
 	}

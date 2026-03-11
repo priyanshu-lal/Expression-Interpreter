@@ -28,7 +28,7 @@ extern double g_answer;  // defined in evaluator.c
 // containers:
 hashmap* g_newVarDeclMap;       // element type: VarDeclEntry
 hashmap* g_refEntries;          // element type: VarDependecies
-hashmap* g_aliases;      // element type: Alias
+hashmap* g_aliases;             // element type: Alias
 static hashmap* s_tmpVarRecord; // element type: char* (no ownership)
 static PtrVec* s_fnList;        // element type: BuiltinFunction* or Function* (no ownership) depending on context
 static PtrVec* s_varList;       // element type: char* (no ownership)
@@ -432,12 +432,12 @@ static ParseResult resolveNewVariableDecl() {
 
 static ParseResult resolveAlias() {
 	if (!(idx == 0 || prevTk.type == TK_SEMICOLON || s_insideFnBody)) {
-		displayError(currentTk, "Invalid use of <c>alias</> keyword, can't an alias here");
+		displayError(currentTk, "Invalid use of <c>using</> keyword, can't an alias here");
 		return FATAL_ERROR;
 	}
 	advance();
 	if (currentTk.type != TK_IDENTIFIER) {
-		displayError(currentTk, "Expected function name after <c>alias</> keyword");
+		displayError(currentTk, "Expected function name after <c>using</> keyword");
 		return FATAL_ERROR;
 	}
 
@@ -472,25 +472,41 @@ static ParseResult resolveAlias() {
 		return ERROR;
 	}
 	*identifier = getIdentifier(currentTk);
-	if (hashmap_get(g_symbolTable, identifier)) {
-		displayError(currentTk, "Can't use this as alias, this name is already in use");
-		return ERROR;
+	sm = hashmap_get(g_symbolTable, identifier);
+	bool updateAlias = false;
+	if (sm) {
+		if (sm->type == ALIAS) {
+			updateAlias = true;
+		}
+		else {
+			displayError(currentTk, "Can't use this as alias, this name is already in use");
+			return ERROR;
+		}
 	}
 
-	if (nextTk.type != TK_SEMICOLON && nextTk.type != TK_EOL) {
-		displayError(nextTk, "Unexpected token. expected semicolon");
+	if (nextTk.type == TK_SEMICOLON) {
+		advance();
+		s_expectExpr = nextTk.type != TK_EOL;
+	}
+	else if (nextTk.type == TK_EOL)  {
+		s_expectExpr = false;
+	}
+	else {
+		displayError(nextTk, "Unexpected token, expected semicolon");
 		return FATAL_ERROR;
 	}
 
-	Alias alias;
-	alias.name = str_from_pool(*identifier);
-	alias.isBuiltin = isBuiltin;
-	if (isBuiltin) alias.bFn = fnPtr;
-	else alias.fn = fnPtr;
+	Alias newAlias;
+	Alias* alias = updateAlias ? (Alias*)hashmap_get(g_aliases, identifier) : &newAlias;
+	if (!updateAlias) alias->name = str_from_pool(*identifier);
+	alias->isBuiltin = isBuiltin;
+	if (isBuiltin) alias->bFn = fnPtr;
+	else alias->fn = fnPtr;
 	
-	hashmap_set(g_aliases, &alias);
-	hashmap_set(g_symbolTable, &(SymbolType){alias.name, ALIAS});
-	s_expectExpr = false;
+	if (!updateAlias) {
+		hashmap_set(g_aliases, alias);
+		hashmap_set(g_symbolTable, &(SymbolType){alias->name, ALIAS});
+	}
 	return OK;
 }
 
@@ -540,7 +556,7 @@ static ParseResult registerFunctionHeaderData() {
 				displayError(currentTk, "Can't use function as argument name");
 			}
 			else if (sType->type == ALIAS) {
-				displayError(currentTk, fstring("Can't use alias as argument name"));
+				displayError(currentTk, fstring("Can't use an alias as argument name"));
 			}
 			else {
 				displayError(currentTk, "Cannot use keywords as argument name");
@@ -920,7 +936,7 @@ static void insertOperator(Token tk) {
 static void emitMultiArgFunctionCall(FnCallEntry* fnE) {
 	appendOperatorUntil(TK_OPEN_PAREN);
 	appendOperatorUntil(TK_OPEN_PAREN);
-	++fnE->argsFound;
+	if (prevTk.type != TK_OPEN_PAREN) ++fnE->argsFound;
 	
 	if (fnE->isVariadic) {
 		NumVecPush(s_constants, (double)fnE->argsFound);
@@ -931,12 +947,14 @@ static void emitMultiArgFunctionCall(FnCallEntry* fnE) {
 			fstring("Function '%s' expects only %d input(s) but %d inputs were provided",
 			*(char**)fnE->fnPtr, fnE->argsRequired, fnE->argsFound));
 		displayNote(fnE->tk, fstring("'%s' was called here", *(char**)fnE->fnPtr));
+		s_expectExpr = false;
 	}
 	else if (fnE->argsFound < fnE->argsRequired) {
 		displayError(currentTk,
-			fstring("Function '%s' expects %d inputs but only %d input(s) were provided",
+			fstring("Function '%s' expects %d inputs but %d input(s) were provided",
 			*(char**)fnE->fnPtr, fnE->argsRequired, fnE->argsFound));
 		displayNote(fnE->tk, fstring("'%s' was called here", *(char**)fnE->fnPtr));
+		s_expectExpr = false;
 	}
 
 	bool hasError = false;
@@ -1160,7 +1178,7 @@ static bool parseInternal() {
 			if (declareNewFunction() == FATAL_ERROR) return false;
 			break;
 
-		case TK_KW_ALIAS:
+		case TK_KW_USING:
 			if (resolveAlias() == FATAL_ERROR) return false;
 			break;
 
