@@ -52,6 +52,7 @@ static int atanhFn();
 static int randomFn();
 static int atan2Fn();
 static int productFn();
+static inline double doubleAbs(double n);
 
 #define ARG_LEN 16
 const char* ARGNAMES[ARG_LEN] = {
@@ -212,14 +213,6 @@ static int lcm() {
 	NumVecPush(st, a);
 	return 1;
 }
-
-// static int clampFn() {
-// 	double n1, n2, n3;
-// 	n3 = NumVecPopBack(st);
-// 	n2 = NumVecPopBack(st);
-// 	n1 = NumVecPopBack(st);
-	
-// }
 
 static int rootFn() {
 	double p = NumVecPopBack(st), n = NumVecPopBack(st);

@@ -936,7 +936,7 @@ static void insertOperator(Token tk) {
 static void emitMultiArgFunctionCall(FnCallEntry* fnE) {
 	appendOperatorUntil(TK_OPEN_PAREN);
 	appendOperatorUntil(TK_OPEN_PAREN);
-	if (prevTk.type != TK_OPEN_PAREN) ++fnE->argsFound;
+	if (!(prevTk.type == TK_OPEN_PAREN && currentTk.type == TK_CLOSE_PAREN)) ++fnE->argsFound;
 	
 	if (fnE->isVariadic) {
 		NumVecPush(s_constants, (double)fnE->argsFound);
