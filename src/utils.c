@@ -153,16 +153,20 @@ void printStartingMsg() {
 }
 
 void displayHelpAndUsageGuide() {
+	changeTextColor(COLOR_GREEN);
+	puts("  __________________________________________________________________________");
 	changeTextColor(COLOR_YELLOW);
-	printf(
-		"\n     ██╗  █████╗  ██████╗ ███████╗"
-		"\n     ██║ ██╔══██╗ ██╔══██╗██╔════╝"
-		"\n     ██║ ███████║ ██║  ██║█████╗  "
-		"\n██   ██║ ██╔══██║ ██║  ██║██╔══╝  "
-		"\n╚█████╔╝ ██║  ██║ ██████╔╝███████╗"
-		"\n ╚════╝  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝\n");
+	puts(
+	"   _____  __   __ _____  _____     _____ _   _ _______ ______ _____  _____"
+	"\n  |  ___| \\ \\ / /|  __ \\|  __ \\   |_   _| \\ | |__   __|  ____|  __ \\|  __ \\"
+	"\n  | |__    \\ V / | |__) | |__) |    | | |  \\| |  | |  | |__  | |__) | |__) |"
+	"\n  |  __|    > <  |  ___/|  _  /     | | | . ` |  | |  |  __| |  _  /|  ___/"
+	"\n  | |___   / . \\ | |    | | \\ \\    _| |_| |\\  |  | |  | |____| | \\ \\| |"
+	"\n  |_____| /_/ \\_\\|_|    |_|  \\_\\  |_____|_| \\_|  |_|  |______|_|  \\_\\_|");
+	changeTextColor(COLOR_GREEN);
+	puts("  __________________________________________________________________________");
 
-	printStyledText("\n<~u>List of Commands:\n");
+	printStyledText("\n <y><~u>List of Commands:\n");
 	changeTextColor(COLOR_CYAN);
 	puts("╭══════════════════════════════════════════════════════════════════════════════╮");
 	resetTextAttribute();
@@ -189,6 +193,7 @@ void displayHelpAndUsageGuide() {
 	puts("╰══════════════════════════════════════════════════════════════════════════════╯");
 	resetTextAttribute();
 	printStyledText("<r>NOTE:</> All the above listed commands start with '<y>@</>' symbol. Ex.: <y>@clear\n");
+	printStyledText("<c>\nEnter expressions and commands here:\n");
 }
 
 bool evaluateInput(const char* input) {
@@ -202,7 +207,7 @@ bool evaluateInput(const char* input) {
 	if (tokens[0].type == TK_AT_THE_RATE && tokenLen >= 3) {
 		Command cmd;
 		bool res = resolveCommand(tokens, tokenLen, &cmd);
-		if (cmd != COMMAND_CLEAR && cmd != COMMAND_EXIT) putchar('\n');
+		if (cmd != COMMAND_CLEAR && cmd != COMMAND_HELP && cmd != COMMAND_EXIT) putchar('\n');
 		return res;
 	}
 
@@ -275,13 +280,13 @@ void runInlineInputs(int argc, char* argv[]) {
 			for (size_t i = 0; i < accumulator->len; i++) {
 				FinalResult* res = (FinalResult*)VecAt(accumulator, i);
 				if (res->isBool) {
-					printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res->value)));
+					printf("%s\n", toBoolString(res->value));
 				}
 				else if (isAnswerInFrcation()) {
-					printStyledText(fstring("<b>==> <g>%s\n", fractionalApproximation(res->value)));
+					printf("%s\n", fractionalApproximation(res->value));
 				}
 				else {
-					printStyledText(fstring("<b>==> <g>%g\n", res->value));
+					printf("%g\n", res->value);
 				}
 			}
 		}

@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	displayHelpAndUsageGuide();
-	printStyledText("<c>\nEnter expressions and commands here:\n");
 
 	while (isRunning()) {
 		printStyledText("<y>>>");
