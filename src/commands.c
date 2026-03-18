@@ -422,7 +422,7 @@ static void clearScreen() {
 	fflush(stdout);
 }
 
-static bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
+bool resolveCommand(Token* tokens, size_t len, Command* outCmdType) {
 	size_t idx = 1;
     char* command = tkToString(&tokens[idx++]);
     const CommandEntry* ce = hashmap_get(s_commandTable, &command);

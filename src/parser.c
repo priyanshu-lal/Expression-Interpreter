@@ -767,13 +767,14 @@ static ParseResult resolveIdentifier() {
 
 	const SymbolType* symbolEntry = (const SymbolType*)hashmap_get(g_symbolTable, identifier);
 	if (symbolEntry) {
+		const Alias* alias;
 		switch (symbolEntry->type) {
 			case VARIABLE:         return resolveVariable(symbolEntry->symbol);
 			case BUILTIN_FUNCTION: return resolveBuiltinFunctionCall(*(BuiltinFunction**)hashmap_get(g_functions, &identifier));
 			case FUNCTION:         return resolveFunctionCall(*(Function**)hashmap_get(g_userFunctions, &identifier));
 
 			case ALIAS:
-				const Alias* alias = hashmap_get(g_aliases, identifier);
+				alias = hashmap_get(g_aliases, identifier);
 				if (alias->isBuiltin) return resolveBuiltinFunctionCall(alias->bFn);
 				else return resolveFunctionCall(alias->fn);
 		}
