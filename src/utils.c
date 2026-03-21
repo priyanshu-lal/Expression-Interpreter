@@ -52,7 +52,6 @@ static void startTimer() {
 		printf("High-resolution performance counter not supported.\n");
 		fflush(stdout);
 		abort();
-		return;
 	}
 	QueryPerformanceCounter(&i_start);
 }
@@ -184,7 +183,7 @@ void displayHelpAndUsageGuide() {
 		"\n│ <~u>angle</> <b>radian</>         --  set angle unit as radian                            <c>│"
 		"\n│ <~u>query</> <b>display</>        --  prints current display mode                         <c>│"
 		"\n│ <~u>query</> <b>angle</>          --  prints current angle unit                           <c>│"
-		"\n│ <~u>eval_mode</> <b>detailed</>   --  prints each steps taken by the evaluation engine    <c>│"
+		"\n│ <~u>eval_mode</> <b>detailed</>   --  prints each steps taken by the interpreter          <c>│"
 		"\n│ <~u>eval_mode</> <b>direct</>     --  prints the result directly (<g>Default</>)                <c>│"
 		"\n│ <~u>timestamp</> <b>on</> / <b>off</>   --  toggle timestamp display option                     <c>│"
 		"\n│ <~u>remove</> <b>varNames...</>   --  remove variables                                    <c>│\n"

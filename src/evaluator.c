@@ -103,7 +103,7 @@ static inline double doubleAbs(double n) {
 	return n;
 }
 
-static bool evaluateInDetail(const Function* eUnit, int indent) {
+static bool evaluateInDetail(const Function* wrapper, int indent) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	size_t startIdx;
 	unsigned iIdx;
@@ -114,16 +114,16 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 	double n1, n2, res = 0.0;
 	char* varName;
 	
-	if (eUnit->key == NULL) {
+	if (wrapper->key == NULL) {
 		// printStyledText("\n<c>[<g>~<c>] <y>Detailed Evaluation Steps:\n");
 		printStyledText(" <c>╭─</> <<y>~</>>\n");
 	}
 
-	for (size_t i = 0; i < eUnit->insCount; i++) {
-		oc = (enum OP_CODE)eUnit->instructions[i];
+	for (size_t i = 0; i < wrapper->insCount; i++) {
+		oc = (enum OP_CODE)wrapper->instructions[i];
 		switch (oc) {
 		case OP_CALL_BUILTIN:
-			fn = eUnit->fnList[fnIdx++];
+			fn = wrapper->fnList[fnIdx++];
 
 			if (fn->argsCount == 1) {
 				logDetail(indent, fstring("<c>│</> Call <b>%s</> (<c>%g</>)", fn->key, NumVecTop(st)));
@@ -148,21 +148,21 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 
 			if (fn->fnPtr() == 0) {
 				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error%s",
-					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
-				startStackTrace(eUnit);
+					fn->key, wrapper->key ? "" : ", <r>aborting execution"));
+				startStackTrace(wrapper);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
 				printStyledTextInBox(fstring("<r>::</> function <y>%s</> returned an unexpected value%s",
-					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
-				startStackTrace(eUnit);
+					fn->key, wrapper->key ? "" : ", <r>aborting execution"));
+				startStackTrace(wrapper);
 				return false;
 			}
 			printStyledText(fstring(" <g>-></> returned value: <g>%g\n", NumVecTop(st)));
 			break;
 
 		case OP_CALL_DEFINED:
-			userFn = (const Function*)(eUnit->fnList[fnIdx++]);
+			userFn = (const Function*)(wrapper->fnList[fnIdx++]);
 			startIdx = st->len - userFn->argsCount;
 			size_t k = 0;
 			for (size_t i = startIdx; i < st->len; i++) {
@@ -171,8 +171,8 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			st->len = startIdx;
 			logUserFnHeader(userFn, indent);
 			if (!evaluateInDetail(userFn, indent + 1)) {
-				if (eUnit->key)
-					printStyledText(fstring(" <b><-- <y>%s</>", eUnit->key));
+				if (wrapper->key)
+					printStyledText(fstring(" <b><-- <y>%s</>", wrapper->key));
 				else
 					printStyledText(" <b><-- <g>main\n");
 				return false;
@@ -188,12 +188,12 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			logDetail(indent, "<c>│\n");
 			break;
 
-        case OP_PUSH_NUM:
-			NumVecPush(st, eUnit->constants[numIdx++]);
+		case OP_PUSH_NUM:
+			NumVecPush(st, wrapper->constants[numIdx++]);
 			break;
 
-        case OP_SET_VAR:
-			varName = eUnit->varList[identIdx++];
+		case OP_SET_VAR:
+			varName = wrapper->varList[identIdx++];
 			varPtr = (Variable*)hashmap_get(g_variables, &varName);
 
 			if (varPtr) {
@@ -210,13 +210,13 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			}
 			break;
 
-        case OP_PUSH_VAR:
-			varName = eUnit->varList[identIdx++];
+		case OP_PUSH_VAR:
+			varName = wrapper->varList[identIdx++];
 			varPtr = (Variable*)hashmap_get(g_variables, &varName);
 
 			if (isnan(varPtr->value)) {
 				displayErrorMsg(fstring("Variable <b>%s</> is not initialized", varPtr->key));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			logDetail(indent, fstring("<c>│</> Take variable <b>%s</> (= <c>%g</>)\n",
@@ -225,33 +225,33 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			NumVecPush(st, varPtr->value);
 			break;
 
-        case OP_ADD:
+		case OP_ADD:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			logDetail(indent, fstring("<c>│</> Add (<c>%g <b>+ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 + n2));
 			NumVecPush(st, n1 + n2);
 			break;
 
-        case OP_SUB:
+		case OP_SUB:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			logDetail(indent, fstring("<c>│</> Subtract (<c>%g <b>- <c>%g <b>= <g>%g</>)\n", n1, n2, n1 - n2));
 			NumVecPush(st, n1 - n2);
 			break;
 
-        case OP_MUL:
+		case OP_MUL:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			logDetail(indent, fstring("<c>│</> Multiply (<c>%g <b>* <c>%g <b>= <g>%g</>)\n", n1, n2, n1 * n2));
 			NumVecPush(st, n1 * n2);
 			break;
 
-        case OP_DIV:
+		case OP_DIV:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			logDetail(indent, fstring("<c>│</> Divide (<c>%g <b>/ <c>%g <b>= <g>%g</>)\n", n1, n2, n1 / n2));
@@ -263,7 +263,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
@@ -271,7 +271,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 				n1, n2, NumVecTop(st)));
 			break;
 
-        case OP_ABS:
+		case OP_ABS:
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, doubleAbs(n1));
 
@@ -279,7 +279,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 				n1, NumVecTop(st)));
 			break;
 
-        case OP_MOD:
+		case OP_MOD:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, fmod(n1, n2));
@@ -291,18 +291,18 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			n1 = NumVecPopBack(st);
 			if (n1 < 0.0 && floor(n2) != n2) {
 				displayErrorMsg(fstring("While solving: (<c>%g</> ^ <c>%g</>), expected a positive value", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, pow(n1, n2));
 			logDetail(indent, fstring("<c>│</> Power (<c>%g <b>^ <c>%g <b>= <g>%g</>)\n", n1, n2, NumVecTop(st)));
 			break;
 
-        case OP_FACTORIAL:
+		case OP_FACTORIAL:
 			n1 = NumVecPopBack(st);
 			res = factorial(n1);
 			if (isnan(res)) {
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, res);
@@ -310,19 +310,19 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			break;
 
 		case OP_PUSH_ARG:
-			iIdx = eUnit->indices[indicesIdx++];
+			iIdx = wrapper->indices[indicesIdx++];
 			logDetail(indent, fstring("<c>│</> Taking input <c>%s</> (= <g>%g</>)\n",
-				eUnit->argsName[iIdx], eUnit->inputValues[iIdx]));
-			NumVecPush(st, eUnit->inputValues[iIdx]);
+				wrapper->argsName[iIdx], wrapper->inputValues[iIdx]));
+			NumVecPush(st, wrapper->inputValues[iIdx]);
 			break;
 
-        case OP_LINE_DONE:
+		case OP_LINE_DONE:
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
-				OpCode lastIns = eUnit->instructions[i - 1];
+				OpCode lastIns = wrapper->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
 					logDetail(indent, "<c>╰─\n");
-					if (i + 1 != eUnit->insCount) {
+					if (i + 1 != wrapper->insCount) {
 						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
@@ -332,7 +332,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 				else if (resultsInBool(lastIns) || (lastIns == OP_CALL_DEFINED && userFn && !userFn->returnTypeIsNum)) {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, true});
 					logDetail(indent, fstring("<c>╰──> %s\n", toBoolString(g_answer)));
-					if (i + 1 != eUnit->insCount) {
+					if (i + 1 != wrapper->insCount) {
 						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
@@ -341,7 +341,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 				else {
 					VecPush(&s_accumulator, &(FinalResult) {g_answer, false});
 					logDetail(indent, fstring("<c>╰──> %g\n", g_answer));
-					if (i + 1 != eUnit->insCount) {
+					if (i + 1 != wrapper->insCount) {
 						logDetail(indent, "<c>╭─</> <<y>~</>>\n");
 					} else {
 						putchar('\n');
@@ -351,7 +351,7 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 			if (isnan(g_answer)) return false;
 			break;
 
-        case OP_PUSH_PREV_ANS:
+		case OP_PUSH_PREV_ANS:
 			NumVecPush(st, g_answer);
 			logDetail(indent, fstring("<c>│</> Take previous result (= <g>%g</>)\n", g_answer));
 			break;
@@ -430,13 +430,13 @@ static bool evaluateInDetail(const Function* eUnit, int indent) {
 	}
 	// return st->len == 0 ? false : !isnan(NumVecTop(st));
 	if (st->len != 0 && isnan(NumVecTop(st))) {
-		startStackTrace(eUnit);
+		startStackTrace(wrapper);
 		return false;
 	}
 	return true;
 }
 
-static bool evaluateDirectly(const Function* eUnit) {
+static bool evaluateDirectly(const Function* wrapper) {
 	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
@@ -445,47 +445,47 @@ static bool evaluateDirectly(const Function* eUnit) {
 	double n1, n2, res = 0.0;
 	char* varName;
 
-	for (size_t i = 0; i < eUnit->insCount; i++) {
-		oc = (enum OP_CODE)eUnit->instructions[i];
+	for (size_t i = 0; i < wrapper->insCount; i++) {
+		oc = (enum OP_CODE)wrapper->instructions[i];
 		switch (oc) {
         case OP_CALL_BUILTIN:
-			fn = eUnit->fnList[fnIdx++];
+			fn = wrapper->fnList[fnIdx++];
 			if (fn->fnPtr() == 0) {
 				printStyledTextInBox(fstring("<r>::</> Builtin function '<y>%s</>' threw an error%s",
-					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
-				startStackTrace(eUnit);
+					fn->key, wrapper->key ? "" : ", <r>aborting execution"));
+				startStackTrace(wrapper);
 				return false;
 			}
 			if (isnan(NumVecTop(st))) {
 				printStyledTextInBox(fstring("<r>::</> function <y>%s</> returned an unexpected value%s",
-					fn->key, eUnit->key ? "" : ", <r>aborting execution"));
-				startStackTrace(eUnit);
+					fn->key, wrapper->key ? "" : ", <r>aborting execution"));
+				startStackTrace(wrapper);
 				return false;
 			}
 			break;
 
 		case OP_CALL_DEFINED:
-			userFn = (const Function*)(eUnit->fnList[fnIdx++]);
+			userFn = (const Function*)(wrapper->fnList[fnIdx++]);
 			size_t startIdx = st->len - userFn->argsCount, k = 0;
 			for (size_t i = startIdx; i < st->len; i++) {
 				userFn->inputValues[k++] = NumVecAt(st, i);
 			}
 			st->len = startIdx;
 			if (!evaluateDirectly(userFn)) {
-				if (eUnit->key)
-					printStyledText(fstring(" <b><-- <y>%s</>", eUnit->key));
+				if (wrapper->key)
+					printStyledText(fstring(" <b><-- <y>%s</>", wrapper->key));
 				else
 					printStyledText(" <b><-- <g>main\n");
 				return false;
 			}
 			break;
 
-        case OP_PUSH_NUM:
-			NumVecPush(st, eUnit->constants[numIdx++]);
+		case OP_PUSH_NUM:
+			NumVecPush(st, wrapper->constants[numIdx++]);
 			break;
 
-        case OP_SET_VAR:
-			varName = eUnit->varList[identIdx++];
+		case OP_SET_VAR:
+			varName = wrapper->varList[identIdx++];
 			varPtr = (Variable*)hashmap_get(g_variables, &varName);
 
 			if (varPtr) {
@@ -498,42 +498,42 @@ static bool evaluateDirectly(const Function* eUnit) {
 			}
 			break;
 
-        case OP_PUSH_VAR:
-			varName = eUnit->varList[identIdx++];
+		case OP_PUSH_VAR:
+			varName = wrapper->varList[identIdx++];
 			varPtr = (Variable*)hashmap_get(g_variables, &varName);
 
 			if (isnan(varPtr->value)) {
 				displayErrorMsg(fstring("Variable <b>%s</> is not initialized", varPtr->key));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, varPtr->value);
 			break;
 
-        case OP_ADD:
+		case OP_ADD:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, n1 + n2);
 			break;
 
-        case OP_SUB:
+		case OP_SUB:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, n1 - n2);
 			break;
 
-        case OP_MUL:
+		case OP_MUL:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, n1 * n2);
 			break;
 
-        case OP_DIV:
+		case OP_DIV:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g / %g)", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, n1 / n2);
@@ -544,52 +544,52 @@ static bool evaluateDirectly(const Function* eUnit) {
 			n1 = floor(NumVecPopBack(st));
 			if (n2 == 0) {
 				displayErrorMsg(fstring("Division by zero: (%g // %g)", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, floor(n1 / n2));
 			break;
 
-        case OP_ABS:
+		case OP_ABS:
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, doubleAbs(n1));
 			break;
 
-        case OP_MOD:
+		case OP_MOD:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			NumVecPush(st, fmod(n1, n2));
 			break;
 
-        case OP_POWER:
+		case OP_POWER:
 			n2 = NumVecPopBack(st);
 			n1 = NumVecPopBack(st);
 			if (n1 < 0.0 && floor(n2) != n2) {
 				displayErrorMsg(fstring("While solving: (<c>%g</> ^ <c>%g</>), expected a positive value", n1, n2));
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, pow(n1, n2));
 			break;
 
-        case OP_FACTORIAL:
+		case OP_FACTORIAL:
 			n1 = NumVecPopBack(st);
 			res = factorial(n1);
 			if (isnan(res)) {
-				startStackTrace(eUnit);
+				startStackTrace(wrapper);
 				return false;
 			}
 			NumVecPush(st, res);
 			break;
 
 		case OP_PUSH_ARG:
-			NumVecPush(st, eUnit->inputValues[eUnit->indices[indicesIdx++]]);
+			NumVecPush(st, wrapper->inputValues[wrapper->indices[indicesIdx++]]);
 			break;
 
-        case OP_LINE_DONE:
+		case OP_LINE_DONE:
 			if (st->len != 0) {
 				g_answer = NumVecTop(st);
-				OpCode lastIns = eUnit->instructions[i - 1];
+				OpCode lastIns = wrapper->instructions[i - 1];
 				if (lastIns == OP_SET_VAR) {
 					NumVecPopBack(st);
 				}
@@ -603,7 +603,7 @@ static bool evaluateDirectly(const Function* eUnit) {
 			if (isnan(g_answer)) return false;
 			break;
 
-        case OP_PUSH_PREV_ANS:
+		case OP_PUSH_PREV_ANS:
 			NumVecPush(st, g_answer);
 			break;
 
@@ -662,7 +662,7 @@ static bool evaluateDirectly(const Function* eUnit) {
         }
     }
 	if (st->len != 0 && isnan(NumVecTop(st))) {
-		startStackTrace(eUnit);
+		startStackTrace(wrapper);
 		return false;
 	}
 	return true;
