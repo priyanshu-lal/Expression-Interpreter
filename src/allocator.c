@@ -189,7 +189,6 @@ PoolAllocator* pool_create(size_t block_size, size_t initial_capacity) {
 		block_size = sizeof(PoolBlock);
 	}
 	
-	/* Align block size to pointer size for better performance */
 	size_t align = sizeof(void*);
 	block_size = (block_size + align - 1) & ~(align - 1);
 	PoolAllocator* pool = (PoolAllocator*)malloc(sizeof(PoolAllocator));
@@ -211,28 +210,25 @@ PoolAllocator* pool_create(size_t block_size, size_t initial_capacity) {
 	return pool;
 }
 
-/* Allocate a block from the pool - O(1) operation */
+// Allocate a block from the pool in O(1)
 void* pool_alloc(PoolAllocator* pool) {
 	if (!pool) return NULL;
 	
 	if (!pool->free_list) {
 		size_t new_capacity = pool->chunks->capacity * pool->growth_factor;
 		if (!pool_add_chunk(pool, new_capacity)) {
-			return NULL;  /* Allocation failed */
+			return NULL;
 		}
 	}
 	
-	/* Pop from free list - O(1) */
 	PoolBlock* block = pool->free_list;
 	pool->free_list = block->next;
 	pool->used_blocks++;
 	
-	// Zero out the block for safety
 	// memset(block, 0, pool->block_size);
 	return (void*)block;
 }
 
-/* Free a block back to the pool - O(1) operation */
 void pool_free(PoolAllocator* pool, void* ptr) {
 	if (!pool || !ptr) return;
 	PoolBlock* block = (PoolBlock*)ptr;
