@@ -29,5 +29,5 @@ void displayUserFunctions();
 bool resolveCommand(Token* tokens, size_t len, Command* outCmdType);
 bool isRunning();
 bool isShowTimeEnabled();
-bool isAnswerInFrcation();
+bool isAnswerInFraction();
 enum EvalMode getEvalMode();

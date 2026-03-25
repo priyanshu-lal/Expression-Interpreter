@@ -44,7 +44,7 @@ void unloadCommands() {
 
 bool isRunning() { return s_isRunning; }
 bool isShowTimeEnabled() { return s_showTimestamp; }
-bool isAnswerInFrcation() { return s_answerInFraction; }
+bool isAnswerInFraction() { return s_answerInFraction; }
 EvalMode getEvalMode() { return s_evalMode; }
 
 void displayVariables() {
@@ -123,9 +123,8 @@ static bool removeCommand(Token* tokens, size_t len) {
 		displayError(tokens[1], "Expected a list of variable names after <c>remove</> command");
 		return false;
 	}
-	PtrVec freeList = newPtrVec(8);
-	Vector typeList = newVector(8, sizeof(enum VarType));
-	enum VarType smType;
+
+	Vector freeList = newVector(8, sizeof(SymbolType));
 	char* varName;
 	bool expectComma = false, isInvalid = false;
 	Token prevTk = {0};
@@ -173,15 +172,11 @@ static bool removeCommand(Token* tokens, size_t len) {
 				}
 			}
 			else {
-				smType = VARIABLE;
-				PtrVecPush(&freeList, keyType->symbol);
-				VecPush(&typeList, &smType);
+				VecPush(&freeList, &(SymbolType) { keyType->symbol, VARIABLE });
 			}
 		}
 		else if (keyType->type == ALIAS) {
-			smType = ALIAS;
-			PtrVecPush(&freeList, keyType->symbol);
-			VecPush(&typeList, &smType);
+			VecPush(&freeList, &(SymbolType) { keyType->symbol, ALIAS });
 		}
 		else {
 			isInvalid = true;
@@ -194,28 +189,25 @@ static bool removeCommand(Token* tokens, size_t len) {
 	}
 
 	if (isInvalid || freeList.len == 0) {
-		PtrVecFree(&freeList);
-		VecFree(&typeList);
+		VecFree(&freeList);
 		return false;
 	}
 	
 	for (size_t i = 0; i < freeList.len; i++) {
-		varName = (char*)PtrVecAt(&freeList, i);
-		smType = *(enum VarType*)VecAt(&typeList, i);
-		hashmap_delete(g_symbolTable, &varName);
+		const SymbolType* item = VecAt(&freeList, i);
+		hashmap_delete(g_symbolTable, &item->symbol);
 
-		if (smType == VARIABLE) {
-			hashmap_delete(g_variables, &varName);
-			printStyledTextInBox(fstring("variable <c>%s</> deleted", varName));
+		if (item->type == VARIABLE) {
+			hashmap_delete(g_variables, &item->symbol);
+			printStyledTextInBox(fstring("variable <c>%s</> deleted", item->symbol));
 		}
 		else {
-			hashmap_delete(g_aliases, &varName);
-			printStyledTextInBox(fstring("alias <c>%s</> deleted", varName));
+			hashmap_delete(g_aliases, &item->symbol);
+			printStyledTextInBox(fstring("alias <c>%s</> deleted", item->symbol));
 		}
-		free_str_from_pool(varName);
+		free_str_from_pool(item->symbol);
 	}
-	PtrVecFree(&freeList);
-	VecFree(&typeList);
+	VecFree(&freeList);
 	return true;
 }
 

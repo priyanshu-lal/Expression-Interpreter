@@ -780,7 +780,7 @@ static ParseResult resolveIdentifier() {
 		}
 	}
 	
-	VarDeclEntry* vEntry = (VarDeclEntry*)hashmap_get(g_newVarDeclMap, identifier);
+	const VarDeclEntry* vEntry = (const VarDeclEntry*)hashmap_get(g_newVarDeclMap, identifier);
 	if (vEntry) {
 		if (vEntry->isInitialized)
 			return resolveVariable(vEntry->name);

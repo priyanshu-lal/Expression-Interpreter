@@ -225,7 +225,7 @@ bool evaluateInput(const char* input) {
 				if (res->isBool) {
 					printStyledText(fstring("<b>==> <g>%s\n", toBoolString(res->value)));
 				}
-				else if (isAnswerInFrcation()) {
+				else if (isAnswerInFraction()) {
 					printStyledText(fstring("<b>==> <g>%s\n", fractionalApproximation(res->value)));
 				}
 				else {
@@ -281,7 +281,7 @@ void runInlineInputs(int argc, char* argv[]) {
 				if (res->isBool) {
 					printf("%s\n", toBoolString(res->value));
 				}
-				else if (isAnswerInFrcation()) {
+				else if (isAnswerInFraction()) {
 					printf("%s\n", fractionalApproximation(res->value));
 				}
 				else {
