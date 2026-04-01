@@ -8,6 +8,7 @@
 #define MAX_VAR_LEN 16
 
 typedef int(*CalcFn)(void);
+typedef double(*ConversionFn)(double);
 
 enum VarType {
 	ALIAS,
@@ -15,6 +16,20 @@ enum VarType {
 	FUNCTION,
 	VARIABLE,
 };
+
+typedef enum {
+	UNIT_LENGTH,
+	UNIT_VOLUME,
+	UNIT_TEMP,
+	UNIT_MASS,
+	UNIT_ENERGY,
+	UNIT_AREA,
+	UNIT_SPEED,
+	UNIT_TIME,
+	UNIT_POWER,
+	UNIT_PRESSURE,
+	UNIT_ANGLE
+} UnitType;
 
 typedef struct {
 	char* key;
@@ -53,6 +68,15 @@ typedef struct {
 } Alias;
 
 typedef struct {
+	const char* key;
+	const char* fullName;
+	UnitType type;
+	bool isPrimary;
+	ConversionFn toPrimary;
+	ConversionFn fromPrimary;
+} Unit;
+
+typedef struct {
 	char* symbol;
 	enum VarType type;
 } SymbolType;
@@ -76,6 +100,7 @@ extern hashmap* g_userFunctions;  // entry type: UserFunc*
 //----------------------------------------------------------------------------------
 
 extern hashmap* g_symbolTable;    // entry type: SymbolType
+extern hashmap* g_unitsTable;     // entry type: Unit
 
 enum AngleUnit {
 	DEGREE, RADIAN

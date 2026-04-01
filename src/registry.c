@@ -4,7 +4,6 @@
 #include "allocator.h"
 #include "logger.h"
 
-#include <stdlib.h>
 #include <stdio.h>
 
 hashmap* g_symbolTable;
@@ -31,6 +30,9 @@ void loadRegistry() {
 	g_symbolTable = hashmap_new(sizeof(SymbolType), 512, 0xDead3FacadeULL, 0xAceCafeeeULL,
 		stringKeyHash, stringKeyCompare, NULL, NULL);
 
+	g_unitsTable = hashmap_new(sizeof(Unit), 256, 0xDeadFacadeULL, 0xAceCafeeeULL,
+		stringKeyHash, stringKeyCompare, NULL, NULL);
+
 	loadSymbols();
 }
 
@@ -39,6 +41,7 @@ void unloadRegistry() {
 	hashmap_free(g_functions);
 	hashmap_free(g_userFunctions);
 	hashmap_free(g_symbolTable);
+	hashmap_free(g_unitsTable);
 }
 
 // ---------- Hashmap callback functions ----------

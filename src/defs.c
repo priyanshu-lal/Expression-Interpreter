@@ -154,10 +154,13 @@ static void populateSymbolTable() {
 	}
 }
 
+extern void setUnits();
+
 void loadSymbols() {
 	srand(time(0));
 	setVariables();
 	setFunctions();
+	setUnits();
 	populateSymbolTable();
 }
 
