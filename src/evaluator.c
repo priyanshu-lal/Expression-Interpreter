@@ -104,7 +104,7 @@ static inline double doubleAbs(double n) {
 }
 
 static bool evaluateInDetail(const Function* wrapper, int indent) {
-	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
+	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0, convIdx = 0;
 	size_t startIdx;
 	unsigned iIdx;
 	const BuiltinFunction* fn;
@@ -223,6 +223,25 @@ static bool evaluateInDetail(const Function* wrapper, int indent) {
 				varPtr->key, varPtr->value));
 
 			NumVecPush(st, varPtr->value);
+			break;
+
+		case OP_CONVERT:
+			const Unit* to = wrapper->convList[convIdx++];
+			const Unit* from = wrapper->convList[convIdx++];
+			n1 = NumVecPopBack(st);
+			logDetail(indent, fstring(
+				"<c>│</> Converting <b>%g</> <c>%s</> to <c>%s</> (= <c>%g</>)\n",
+						n1, to->key, from->key)
+			);
+			if (from->isPrimary) {
+				NumVecPush(st, to->fromPrimary(n1));
+			}
+			else if (to->isPrimary) {
+				NumVecPush(st, from->toPrimary(n1));
+			}
+			else {
+				NumVecPush(st, to->fromPrimary(from->toPrimary(n1)));
+			}
 			break;
 
 		case OP_ADD:
@@ -437,7 +456,7 @@ static bool evaluateInDetail(const Function* wrapper, int indent) {
 }
 
 static bool evaluateDirectly(const Function* wrapper) {
-	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0;
+	size_t numIdx = 0, fnIdx = 0, identIdx = 0, indicesIdx = 0, convIdx = 0;
 	firstErrInFn = false;
 	const BuiltinFunction* fn;
 	const Function* userFn = NULL;
@@ -508,6 +527,22 @@ static bool evaluateDirectly(const Function* wrapper) {
 				return false;
 			}
 			NumVecPush(st, varPtr->value);
+			break;
+
+		case OP_CONVERT:
+			const Unit* to = wrapper->convList[convIdx++];
+			const Unit* from = wrapper->convList[convIdx++];
+			n1 = NumVecPopBack(st);
+
+			if (from->isPrimary) {
+				NumVecPush(st, to->fromPrimary(n1));
+			}
+			else if (to->isPrimary) {
+				NumVecPush(st, from->toPrimary(n1));
+			}
+			else {
+				NumVecPush(st, to->fromPrimary(from->toPrimary(n1)));
+			}
 			break;
 
 		case OP_ADD:
