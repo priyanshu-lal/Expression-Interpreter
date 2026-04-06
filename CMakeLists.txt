@@ -24,6 +24,7 @@ set(JADE_SOURCES
     src/allocator.c
     src/commands.c
     src/container.c
+    src/conversions.c
     src/defs.c
     src/evaluator.c
     src/hashmap.c

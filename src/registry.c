@@ -44,6 +44,22 @@ void unloadRegistry() {
 	hashmap_free(g_unitsTable);
 }
 
+const char* unitAsString(UnitType type) {
+	switch (type) {
+	case UNIT_LENGTH:   return "Length";
+	case UNIT_VOLUME:   return "Volume";
+	case UNIT_TEMP:     return "Temperature";
+	case UNIT_MASS:     return "Weight & Mass";
+	case UNIT_ENERGY:   return "Energy";
+	case UNIT_AREA:     return "Area";
+	case UNIT_SPEED:    return "Speed";
+	case UNIT_TIME:     return "Time";
+	case UNIT_POWER:    return "Power";
+	case UNIT_PRESSURE: return "Pressure";
+	case UNIT_ANGLE:    return "Angle";
+	}
+}
+
 // ---------- Hashmap callback functions ----------
 static int ptrStringKeyCompare(const void* a, const void* b, void* udata) {
 	return strcmp(**(const char***)a, **(const char***)b);

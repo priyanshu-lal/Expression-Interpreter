@@ -32,6 +32,7 @@ hashmap* g_aliases;             // element type: Alias
 static hashmap* s_tmpVarRecord; // element type: char* (no ownership)
 static PtrVec* s_fnList;        // element type: BuiltinFunction* or Function* (no ownership) depending on context
 static PtrVec* s_varList;       // element type: char* (no ownership)
+static PtrVec* s_convList;      // element type: Unit* (no ownership) 
 static Vector* s_opCode;        // element type: OP_CODE
 static Vector* s_indices;       // element type: unsigned int
 static hashmap* s_fnArgsEntry;  // element type: ArgEntry
@@ -44,6 +45,7 @@ static Vector* s_operatorStack;    // element type: TokenKind
 static Vector* s_fnStack;          // element type: FnCallEntry
 static Vector* s_singleArgFnStack; // element type: FnCallEntry
 static PtrVec* s_varDeclStack;     // element type: char* (no ownership)
+static PtrVec* s_convStack;        // element type: Unit* (no ownership)
 //------------------------
 
 static Function* s_intermediateFn;
@@ -95,6 +97,7 @@ void initParser() {
 	s_indices = arena_alloc(g_globArena, sizeof(Vector));
 	s_constants = arena_alloc(g_globArena, sizeof(NumVec));
 	s_argNamePtr = arena_alloc(g_globArena, sizeof(PtrVec));
+	s_convList = arena_alloc(g_globArena, sizeof(PtrVec));
 	
 	*s_fnList = newPtrVec(64);
 	*s_varList = newPtrVec(64);
@@ -102,17 +105,20 @@ void initParser() {
 	*s_indices = newVector(16, sizeof(unsigned));
 	*s_constants = newNumVec(128);
 	*s_argNamePtr = newPtrVec(4);
+	*s_convList = newPtrVec(8);
 	// -----
 	
 	s_varDeclStack = arena_alloc(g_globArena, sizeof(PtrVec));
 	s_fnStack = arena_alloc(g_globArena, sizeof(Vector));
 	s_operatorStack = arena_alloc(g_globArena, sizeof(Vector));
 	s_singleArgFnStack = arena_alloc(g_globArena, sizeof(Vector));
+	s_convStack = arena_alloc(g_globArena, sizeof(PtrVec));
 
 	*s_varDeclStack = newPtrVec(8);
 	*s_fnStack = newVector(8, sizeof(FnCallEntry));
 	*s_operatorStack = newVector(64, sizeof(TokenKind));
 	*s_singleArgFnStack = newVector(8, sizeof(FnCallEntry));
+	*s_convStack = newPtrVec(8);
 	// -----
 
 	s_intermediateFn = arena_alloc(g_globArena, sizeof(Function));
@@ -138,11 +144,13 @@ void freeParser() {
 	VecFree(s_indices);
 	NumVecFree(s_constants);
 	PtrVecFree(s_argNamePtr);
+	PtrVecFree(s_convList);
 
 	PtrVecFree(s_varDeclStack);
 	VecFree(s_fnStack);
 	VecFree(s_operatorStack);
 	VecFree(s_singleArgFnStack);
+	PtrVecFree(s_convStack);
 
 	hashmap_free(s_fnArgsEntry);
 	hashmap_free(g_aliases);
@@ -196,6 +204,7 @@ static OpCode tokenToInstruction(TokenKind tk, bool* out_hasError) {
 	case TK_SM: return OP_SM;
 	case TK_GT_EQ: return OP_GT_OR_EQ;
 	case TK_SM_EQ: return OP_SM_OR_EQ;
+	case TK_KW_TO: return OP_CONVERT;
 	// case TK_KW_ELSE: return OP_TERNARY;
 
 	// bad terminology, but due to lack of matching TokenKind and the need for different stacks,
@@ -214,17 +223,30 @@ static OpCode tokenToInstruction(TokenKind tk, bool* out_hasError) {
 }
 
 static FORCE_INLINE void performOperatorSpecificAction(TokenKind sign) {
-	if (sign == TK_IDENTIFIER || sign == TK_KW_DEF) {
-		PtrVecPush(s_fnList, AS_FN_CALL_PTR(VecPopBack(s_singleArgFnStack))->fnPtr);
-	}
-	else if (sign == TK_COMMA || sign == TK_ARROW) {
-		PtrVecPush(s_fnList, AS_FN_CALL_PTR(VecPopBack(s_fnStack))->fnPtr);
-	}
-	else if (sign == TK_EQUAL) {
-		s_strPtr = PtrVecPopBack(s_varDeclStack);
-		VarDeclEntry* vEntry = (VarDeclEntry*)hashmap_get(g_newVarDeclMap, &s_strPtr);
-		if (vEntry) vEntry->isInitialized = true;
-		PtrVecPush(s_varList, s_strPtr);
+	switch (sign) {
+		case TK_IDENTIFIER:
+		case TK_KW_DEF:
+			PtrVecPush(s_fnList, AS_FN_CALL_PTR(VecPopBack(s_singleArgFnStack))->fnPtr);
+			break;
+
+		case TK_COMMA:
+		case TK_ARROW: 
+			PtrVecPush(s_fnList, AS_FN_CALL_PTR(VecPopBack(s_fnStack))->fnPtr);
+			break;
+
+		case TK_KW_TO:
+			PtrVecPush(s_convList, PtrVecPopBack(s_convStack));
+			PtrVecPush(s_convList, PtrVecPopBack(s_convStack));
+			break;
+
+		case TK_EQUAL:
+			s_strPtr = PtrVecPopBack(s_varDeclStack);
+			VarDeclEntry* vEntry = (VarDeclEntry*)hashmap_get(g_newVarDeclMap, &s_strPtr);
+			if (vEntry) vEntry->isInitialized = true;
+			PtrVecPush(s_varList, s_strPtr);
+			break;
+
+		default: return;
 	}
 }
 
@@ -666,6 +688,7 @@ static ParseResult declareNewFunction() {
 	const size_t offset_constants = s_constants->len;
 	const size_t offset_varList = s_varList->len;
 	const size_t offset_fnList = s_fnList->len;
+	const size_t offset_convList = s_convList->len;
 
 	s_insideFnBody = true;
 	hashmap_clear(s_tmpVarRecord, true);
@@ -697,21 +720,25 @@ static ParseResult declareNewFunction() {
 	const size_t constantLen = s_constants->len - offset_constants;
 	const size_t varListLen = s_varList->len - offset_varList;
 	const size_t fnListLen = s_fnList->len - offset_fnList;
+	const size_t convListLen = s_convList->len - offset_convList;
 
 	fn->constants = arena_alloc(g_globArena, sizeof(double) * constantLen);
 	fn->varList = arena_alloc(g_globArena, sizeof(char*) * varListLen);
 	fn->fnList = arena_alloc(g_globArena, sizeof(void*) * fnListLen);
+	fn->convList = arena_alloc(g_globArena, sizeof(Unit*) * convListLen);
 
 	memcpy(fn->instructions, s_opCode->data + offset_opCode, fn->insCount);
 	memcpy(fn->indices, s_indices->data, s_indices->len * sizeof(unsigned int));
 	memcpy(fn->constants, s_constants->data + offset_constants, sizeof(double) * constantLen);
 	memcpy(fn->varList, s_varList->data + offset_varList, sizeof(char*) * varListLen);
 	memcpy(fn->fnList, s_fnList->data + offset_fnList, sizeof(void*) * fnListLen);
+	memcpy(fn->convList, s_convList->data + offset_convList, sizeof(Unit*) * convListLen);
 
 	s_opCode->len = offset_opCode;
 	s_constants->len = offset_constants;
 	s_varList->len = offset_varList;
 	s_fnList->len = offset_fnList;
+	s_convList->len = offset_convList;
 
 	hashmap_set(g_symbolTable, &(SymbolType){s_currentFnName, FUNCTION});
 	hashmap_set(g_userFunctions, &fn);
@@ -750,8 +777,65 @@ static void resolveLetKeyword() {
 	}
 }
 
+static ParseResult resolveConversion() {
+	if (s_expectExpr) {
+		// displayError(currentTk, fstring("Expected an expression or number before this"));
+		NumVecPush(s_constants, 1.0);
+		addInstruction(OP_PUSH_NUM);
+		s_expectExpr = false;
+	}
+	
+	const Unit* from = NULL;
+	const Unit* to = NULL;
+	bool startUnitFound = false;
+
+	do {
+		if (!startUnitFound) {
+			from = hashmap_get(g_unitsTable, identifier);
+			if (!from) {
+				displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
+				return ERROR;
+			}
+			startUnitFound = true;
+		}
+
+		advance();
+		if (nextTk.type == TK_EOL) {
+			displayError(currentTk, "Unexpected end of line, expected a unit name");
+			return ERROR;
+		}
+		if (nextTk.type != TK_IDENTIFIER) {
+			displayError(nextTk, "Expected unit name after 'to' keyword");
+			return ERROR;
+		}
+		advance();
+
+		*identifier = getIdentifier(currentTk);
+		to = hashmap_get(g_unitsTable, identifier);
+		if (!to) {
+			displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
+			return ERROR;
+		}
+
+		if (from->type != to->type) {
+			displayError(currentTk, fstring(
+				"Type mismatch, can't convert from <c>%s</> (unit: <y>%s</>) to <c>%s</> (unit: <y>%s</>)",
+				from->fullName, unitAsString(from->type), to->fullName, unitAsString(to->type)
+			));
+		}
+	} while (nextTk.type == TK_KW_TO);
+
+	if (to == from) return OK;
+	addOperator(TK_KW_TO);
+	PtrVecPush(s_convStack, (void*)from);
+	PtrVecPush(s_convStack, (void*)to);
+	return OK;
+}
+
 static ParseResult resolveIdentifier() {
 	*identifier = getIdentifier(currentTk);
+
+	if (nextTk.type == TK_KW_TO) return resolveConversion();
 
 	if (s_insideFnBody) {
 		const ArgEntry* en = (const ArgEntry*)hashmap_get(s_fnArgsEntry, identifier);
@@ -817,12 +901,15 @@ static int precedence(TokenKind tk) {
 	switch (tk) {
 	case TK_IDENTIFIER:
 	case TK_KW_DEF:
-		return 11;
+		return 12;
 
 	case TK_EXCLAIM:
-		return 10;
+		return 11;
 
 	case TK_CARET:
+		return 10;
+
+	case TK_KW_TO:
 		return 9;
 
 	case TK_DIV:
@@ -1256,6 +1343,10 @@ static bool parseInternal() {
 			displayError(currentTk,"Invalid use of '->', not a function decleration");
 			break;
 
+		case TK_KW_TO:
+			displayError(currentTk, "Invalid use of 'to' keyword, not a unit conversion");
+			break;
+
 		case TK_DOLLAR:
 			handleDollarOperator();
 			break;
@@ -1314,6 +1405,7 @@ static Function* packIntoFunction() {
 	s_intermediateFn->constants = s_constants->data;
 	s_intermediateFn->varList = (char**)s_varList->data;
 	s_intermediateFn->fnList = s_fnList->data;
+	s_intermediateFn->convList = (Unit**)s_convList->data;
 	if (s_opCode->len > 1) {
 		s_intermediateFn->returnTypeIsNum = resultsInBool(AS_OP_CODE(VecAt(s_opCode, s_opCode->len - 2)));
 	}
@@ -1334,11 +1426,13 @@ Function* parse(Token* t, int startIdx, size_t len) {
 	VecClear(s_fnStack);
 	VecClear(s_singleArgFnStack);
 	PtrVecClear(s_varDeclStack);
+	PtrVecClear(s_convStack);
 
 	PtrVecClear(s_fnList);
 	PtrVecClear(s_varList);
 	VecClear(s_opCode);
 	NumVecClear(s_constants);
+	PtrVecClear(s_convList);
 
 	currentTk = (Token) {TK_EOL, 0, 0};
 	while (s_pipeDepth > 0) s_absExprParaCount[s_pipeDepth--] = 0;

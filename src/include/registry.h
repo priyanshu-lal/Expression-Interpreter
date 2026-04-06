@@ -44,6 +44,15 @@ typedef struct {
 	bool isVariadic;
 } BuiltinFunction;
 
+typedef struct {
+	const char* key;
+	const char* fullName;
+	UnitType type;
+	bool isPrimary;
+	ConversionFn toPrimary;
+	ConversionFn fromPrimary;
+} Unit;
+
 typedef struct Function {
 	char* key;
 	const char** argsName;
@@ -56,6 +65,7 @@ typedef struct Function {
 	double* constants;   // list of constant numbers (literals)
 	char** varList;      // list of Variable name (char*)
 	void** fnList;       // list of pointers to: Function* or BuiltinFunction* depending on instruction
+	Unit** convList;
 } Function;
 
 typedef struct {
@@ -66,15 +76,6 @@ typedef struct {
 		Function* fn;	
 	};
 } Alias;
-
-typedef struct {
-	const char* key;
-	const char* fullName;
-	UnitType type;
-	bool isPrimary;
-	ConversionFn toPrimary;
-	ConversionFn fromPrimary;
-} Unit;
 
 typedef struct {
 	char* symbol;
@@ -110,6 +111,7 @@ void loadRegistry();
 void unloadRegistry();
 
 void displayFunctionProto(const Function* fn);
+const char* unitAsString(UnitType);
 
 int stringKeyCompare(const void* a, const void* b, void* udata);
 uint64_t stringKeyHash(const void* item, uint64_t seed0, uint64_t seed1);
