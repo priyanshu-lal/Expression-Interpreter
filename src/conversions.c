@@ -6,7 +6,7 @@ static double NanometerToM(double n) { return n * 1e-9; }
 static double MicronToM(double n)    { return n * 1e-6; }
 static double KmToM(double n)        { return n * 1000.0; }
 static double InchToM(double n)      { return n * 0.0254; }
-static double CmToM(double n)        { return n * 100.0; }
+static double CmToM(double n)        { return n / 100.0; }
 static double FootToM(double n)	     { return n * 0.3048; }
 static double YardToM(double n)      { return n * 0.9144; }
 static double MileToM(double n)      { return n * 1609.344; }
@@ -16,7 +16,7 @@ static double MeterToNanometer(double n) { return n * 1e+9; }
 static double MeterToMicron(double n)    { return n * 1e+6; }
 static double MeterToKm(double n)        { return n / 1000.0; }
 static double MeterToInch(double n)      { return n / 0.0254; }
-static double MeterToCm(double n)        { return n / 100.0; }
+static double MeterToCm(double n)        { return n * 100.0; }
 static double MeterToFoot(double n)      { return n / 0.3048; }
 static double MeterToYard(double n)      { return n / 0.9144; }
 static double MeterToMile(double n)	     { return n / 1609.344; }
@@ -141,7 +141,8 @@ static double SecToMillisec(double n) { return n * 1e+3; }
 static double SecToMinute(double n)   { return n / 60.0; }
 static double SecToHour(double n)     { return n / 3600.0; }
 static double SecToDay(double n)      { return n / 86400.0; }
-static double SecToWeek(double n)     { return n / 31557600.0; }
+static double SecToWeek(double n)     { return n / 604800.0; }
+static double SecToYear(double n)     { return n / 31557600.0; }
 // End: Time
 
 
@@ -190,6 +191,8 @@ static double RadToArcsec(double n)  { return n * 648000.0 / PI_V; }
 static double RadToRev(double n)     { return n * 1 / 2 * PI_V; }
 // End: Angle
 
+hashmap* g_unitsTable;
+
 void setUnits() {
 	// UNIT: Length
 	hashmap_set(g_unitsTable, &(Unit) {
@@ -232,7 +235,7 @@ void setUnits() {
 		.key ="km",
 		.fullName = "Kilometers",
 		.type = UNIT_LENGTH,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = KmToM,
 		.fromPrimary = MeterToKm
 	});
@@ -274,7 +277,7 @@ void setUnits() {
 	});
 
 	hashmap_set(g_unitsTable, &(Unit) {
-		.key = "miles",
+		.key = "mile",
 		.fullName = "Miles",
 		.type = UNIT_LENGTH,
 		.isPrimary = false,
@@ -398,7 +401,7 @@ void setUnits() {
 		.key = "mg",
 		.fullName = "Miligrams",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = MgToKg,
 		.fromPrimary = KgToMg,
 	});
@@ -407,7 +410,7 @@ void setUnits() {
 		.key = "cg",
 		.fullName = "Centigrams",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = CgToKg,
 		.fromPrimary = KgToCg,
 	});
@@ -416,16 +419,16 @@ void setUnits() {
 		.key = "dg",
 		.fullName = "Decagrams",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = DgToKg,
 		.fromPrimary = KgToDg,
 	});
 
 	hashmap_set(g_unitsTable, &(Unit) {
 		.key = "g",
-		.fullName = "Miligrams",
+		.fullName = "Grams",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = GToKg,
 		.fromPrimary = KgToG,
 	});
@@ -434,7 +437,7 @@ void setUnits() {
 		.key = "tonne",
 		.fullName = "Metric Tonnes",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = MTonneToKg,
 		.fromPrimary = KgToMTonne,
 	});
@@ -443,7 +446,7 @@ void setUnits() {
 		.key = "lb",
 		.fullName = "Pounds",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = PoundToKg,
 		.fromPrimary = KgToPound,
 	});
@@ -452,7 +455,7 @@ void setUnits() {
 		.key = "oz",
 		.fullName = "Ounces",
 		.type = UNIT_MASS,
-		.isPrimary = true,
+		.isPrimary = false,
 		.toPrimary = OzToKg,
 		.fromPrimary = KgToOz,
 	});
@@ -752,7 +755,7 @@ void setUnits() {
 		.type = UNIT_TIME,
 		.isPrimary = false,
 		.toPrimary = YearToSec,
-		.fromPrimary = SecToMicrosec
+		.fromPrimary = SecToYear
 	});
 	// End: Time
 

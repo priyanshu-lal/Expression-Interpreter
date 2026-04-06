@@ -229,10 +229,6 @@ static bool evaluateInDetail(const Function* wrapper, int indent) {
 			const Unit* to = wrapper->convList[convIdx++];
 			const Unit* from = wrapper->convList[convIdx++];
 			n1 = NumVecPopBack(st);
-			logDetail(indent, fstring(
-				"<c>│</> Converting <b>%g</> <c>%s</> to <c>%s</> (= <c>%g</>)\n",
-						n1, to->key, from->key)
-			);
 			if (from->isPrimary) {
 				NumVecPush(st, to->fromPrimary(n1));
 			}
@@ -242,6 +238,9 @@ static bool evaluateInDetail(const Function* wrapper, int indent) {
 			else {
 				NumVecPush(st, to->fromPrimary(from->toPrimary(n1)));
 			}
+			logDetail(indent, fstring(
+				"<c>│</> Converting <b>%g</> <c>%s</> to <c>%s</> (= <c>%g</>)\n",
+					n1, from->key, to->key, NumVecTop(st)));
 			break;
 
 		case OP_ADD:
