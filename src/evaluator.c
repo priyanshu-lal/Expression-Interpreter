@@ -239,7 +239,7 @@ static bool evaluateInDetail(const Function* wrapper, int indent) {
 				NumVecPush(st, to->fromPrimary(from->toPrimary(n1)));
 			}
 			logDetail(indent, fstring(
-				"<c>│</> Converting <b>%g</> <c>%s</> to <c>%s</> (= <c>%g</>)\n",
+				"<c>│</> Convert <b>%g</> <c>%s</> to <c>%s</> (= <c>%g</>)\n",
 					n1, from->key, to->key, NumVecTop(st)));
 			break;
 

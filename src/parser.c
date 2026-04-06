@@ -173,6 +173,7 @@ static struct FuncList* newNode(char* fnName) {
 }
 
 static bool parseInternal();
+static void insertOperator(Token tk);
 
 static inline bool advance() {
 	if (idx + 1 < LEN - 1) {
@@ -777,6 +778,19 @@ static void resolveLetKeyword() {
 	}
 }
 
+static char* removeTrailingS(const char* str) {
+	static char nStr[16];
+	char ch;
+	size_t i = 0;
+	while ((ch = str[i]) != '\0') {
+		if (ch == 's' && str[i + 1] == '\0') break;
+		nStr[i] = ch;
+		++i;
+	}
+	nStr[i] = '\0';
+	return nStr;
+}
+
 static ParseResult resolveConversion() {
 	if (s_expectExpr) {
 		// displayError(currentTk, fstring("Expected an expression or number before this"));
@@ -793,8 +807,12 @@ static ParseResult resolveConversion() {
 		if (!startUnitFound) {
 			from = hashmap_get(g_unitsTable, identifier);
 			if (!from) {
-				displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
-				return ERROR;
+				*identifier = removeTrailingS(*identifier);
+				from = hashmap_get(g_unitsTable, identifier);
+				if (!from) {
+					displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
+					return ERROR;
+				}
 			}
 			startUnitFound = true;
 		}
@@ -813,8 +831,12 @@ static ParseResult resolveConversion() {
 		*identifier = getIdentifier(currentTk);
 		to = hashmap_get(g_unitsTable, identifier);
 		if (!to) {
-			displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
-			return ERROR;
+			*identifier = removeTrailingS(*identifier);
+			to = hashmap_get(g_unitsTable, identifier);
+			if (!to) {
+				displayError(currentTk, fstring("'%s' is not a valid unit name", tkToString(&currentTk)));
+				return ERROR;
+			}
 		}
 
 		if (from->type != to->type) {
@@ -826,7 +848,8 @@ static ParseResult resolveConversion() {
 	} while (nextTk.type == TK_KW_TO);
 
 	if (to == from) return OK;
-	addOperator(TK_KW_TO);
+	// addOperator(TK_KW_TO);
+	insertOperator(prevTk);
 	PtrVecPush(s_convStack, (void*)from);
 	PtrVecPush(s_convStack, (void*)to);
 	return OK;
@@ -891,7 +914,12 @@ static ParseResult resolveIdentifier() {
 	}
 	else {
 		s_expectExpr = false;
-		displayError(currentTk, fstring("'%s' is not a valid identifier or keyword", tkToString(&currentTk)));
+		if (hashmap_get(g_unitsTable, identifier)) {
+			displayError(currentTk, fstring("Expected 'to' keyword after unit <c>%s</>", tkToString(&currentTk)));
+		}
+		else {
+			displayError(currentTk, fstring("'%s' is not a valid identifier or keyword", tkToString(&currentTk)));
+		}
 		return ERROR;
 	}
 	return OK;
@@ -999,7 +1027,7 @@ static void insertOperator(Token tk) {
 			addInstruction(oc);
 		}
 
-		if (tk.type != TK_EXCLAIM) s_expectExpr = true;
+		if (tk.type != TK_EXCLAIM && tk.type != TK_KW_TO) s_expectExpr = true;
 		addOperator(tk.type);
 	}
 
@@ -1341,10 +1369,12 @@ static bool parseInternal() {
 
 		case TK_ARROW:
 			displayError(currentTk,"Invalid use of '->', not a function decleration");
+			s_expectExpr = false;
 			break;
 
 		case TK_KW_TO:
 			displayError(currentTk, "Invalid use of 'to' keyword, not a unit conversion");
+			s_expectExpr = false;
 			break;
 
 		case TK_DOLLAR:
