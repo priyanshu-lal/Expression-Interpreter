@@ -386,6 +386,33 @@ void displayPrecedenceTable() {
 	);
 }
 
+static inline void printUnits(UnitType uType) {
+	size_t i = 0;
+	Unit* uPtr;
+	printStyledText(fstring("\n<c>=></> <y>%s</>\n", unitAsString(uType)));
+	while (hashmap_iter(g_unitsTable, &i, (void**)&uPtr)) {
+		if (uPtr->type == uType)
+			printStyledText(fstring("   <c>-</> <b>%s</> (<g>%s</>)\n",
+				uPtr->fullName, uPtr->key));
+	}
+}
+
+static void displayAllUnits() {
+	putchar('\n');
+	printStyledTextInBox("<c>:: <y>Unit List");
+	printUnits(UNIT_LENGTH);
+	printUnits(UNIT_VOLUME);
+	printUnits(UNIT_TEMP);
+	printUnits(UNIT_MASS);
+	printUnits(UNIT_ENERGY);
+	printUnits(UNIT_AREA);
+	printUnits(UNIT_SPEED);
+	printUnits(UNIT_TIME);
+	printUnits(UNIT_POWER);
+	printUnits(UNIT_PRESSURE);
+	printUnits(UNIT_ANGLE);
+}
+
 static bool listCommand(Token tk) {
 	if (tk.type == TK_EOL) {
 		displayErrorMsg("Missing option argument after <c>list</> command\n"
@@ -400,6 +427,9 @@ static bool listCommand(Token tk) {
 	}
 	else if (strcmp(tkToString(&tk), "functions") == 0) {
 		displayUserFunctions();
+	}
+	else if (strcmp(tkToString(&tk), "units") == 0) {
+		displayAllUnits();
 	}
 	else {
 		displayError(tk, "Invalid option after <c>list</> command\n"

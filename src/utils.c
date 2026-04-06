@@ -177,6 +177,7 @@ void displayHelpAndUsageGuide() {
 		"\n│ <~u>list</> <b>vars</>            --  display all the variables with their name and value <c>│"
 		"\n│ <~u>list</> <b>builtins</>        --  display prototype of all the predefined functions   <c>│"
 		"\n│ <~u>list</> <b>functions</>       --  display prototype of all the scripted functions     <c>│"
+		"\n│ <~u>list</> <b>units</>           --  display all the supported units                     <c>│"
 		"\n│ <~u>display</> <b>fraction</>     --  display answer in fractional form                   <c>│"
 		"\n│ <~u>display</> <b>decimal</>      --  display answer in decimal form (<g>Default</>)            <c>│"
 		"\n│ <~u>angle</> <b>degree</>         --  set angle unit as degree (<g>Default</>)                  <c>│"
